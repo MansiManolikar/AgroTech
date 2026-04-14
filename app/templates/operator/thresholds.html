@@ -1,0 +1,99 @@
+{% extends "shared/base.html" %}
+{% block title %}Alert Thresholds — CropIQ{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div>
+   <h1 class="page-title">⚠ Alert Thresholds</h1>
+   <p class="page-sub">Set soil moisture and rain-avoid thresholds per zone — triggers farmer notifications</p>
+ </div>
+</div>
+
+<div class="grid-2">
+ <!-- Set Threshold Form -->
+ <div class="card">
+   <div class="card-header">
+     <span class="card-title">Set / Update Threshold</span>
+   </div>
+   <form method="POST" action="{{ url_for('operator.set_threshold') }}">
+     <div class="form-group">
+       <label>Zone *</label>
+       <select name="zone_id" required>
+         <option value="">Select a zone</option>
+         {% for z in zones %}
+         <option value="{{ z.id }}">{{ z.farmer_name }} — {{ z.farm_name }} — {{ z.zone_name }}</option>
+         {% endfor %}
+       </select>
+     </div>
+     <div class="form-group">
+       <label>Moisture Low Threshold (%)</label>
+       <input type="number" name="moisture_low_pct" value="30" min="0" max="100" step="0.5"/>
+       <span class="form-hint">Alert when moisture drops below this value</span>
+     </div>
+     <div class="form-group">
+       <label>Moisture High Threshold (%)</label>
+       <input type="number" name="moisture_high_pct" value="80" min="0" max="100" step="0.5"/>
+       <span class="form-hint">Alert when moisture exceeds this value</span>
+     </div>
+     <div class="form-group">
+       <label>Rain Avoid Threshold (mm)</label>
+       <input type="number" name="rain_avoid_mm" value="5" min="0" step="0.5"/>
+       <span class="form-hint">Skip irrigation if rainfall exceeds this amount</span>
+     </div>
+     <div class="form-group">
+       <label style="font-weight:700;margin-bottom:8px">Notification Channels</label>
+       <div style="display:flex;flex-direction:column;gap:8px">
+         <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer">
+           <input type="checkbox" name="notify_sms" style="width:auto" checked/> Send SMS alerts
+         </label>
+         <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer">
+           <input type="checkbox" name="notify_email" style="width:auto" checked/> Send email alerts
+         </label>
+       </div>
+     </div>
+     <button type="submit" class="btn btn-primary">Save Threshold</button>
+   </form>
+ </div>
+
+ <!-- Existing Thresholds -->
+ <div class="card">
+   <div class="card-header">
+     <span class="card-title">Existing Thresholds</span>
+   </div>
+   {% if thresholds %}
+   <div class="table-wrap">
+     <table>
+       <thead>
+         <tr>
+           <th>Zone</th>
+           <th>Low %</th>
+           <th>High %</th>
+           <th>Rain mm</th>
+           <th>SMS</th>
+           <th>Email</th>
+         </tr>
+       </thead>
+       <tbody>
+         {% for t in thresholds %}
+         <tr>
+           <td>
+             <div><span class="zone-pill">{{ t.zone_name }}</span></div>
+             <div style="font-size:0.75rem;color:var(--gray-500)">{{ t.farm_name }}</div>
+           </td>
+           <td><span class="badge badge-red">{{ t.moisture_low_pct }}%</span></td>
+           <td><span class="badge badge-blue">{{ t.moisture_high_pct }}%</span></td>
+           <td><span class="badge badge-amber">{{ t.rain_avoid_mm }}mm</span></td>
+           <td>{% if t.notify_sms %}✓{% else %}—{% endif %}</td>
+           <td>{% if t.notify_email %}✓{% else %}—{% endif %}</td>
+         </tr>
+         {% endfor %}
+       </tbody>
+     </table>
+   </div>
+   {% else %}
+     <div class="empty-state">
+       <p>No thresholds configured yet. Set thresholds for zones to enable automated alerts.</p>
+     </div>
+   {% endif %}
+ </div>
+</div>
+{% endblock %}

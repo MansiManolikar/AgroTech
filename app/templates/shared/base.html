@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8"/>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>{% block title %}Smart Crop & Irrigation Portal{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+
+  {% block extra_css %}{% endblock %}
+
+</head>
+
+<body>
+
+{% if current_user.is_authenticated %}
+
+<nav class="navbar">
+
+  <div class="nav-brand">
+
+    <span class="nav-logo">&#127807;</span>
+
+    <span class="nav-title">CropIQ Portal</span>
+
+  </div>
+
+  <ul class="nav-links">
+
+    {% if current_user.is_farmer %}
+
+      <li><a href="{{ url_for('farmer.dashboard') }}" class="{{ 'active' if request.endpoint == 'farmer.dashboard' }}">Dashboard</a></li>
+
+      <li><a href="{{ url_for('farmer.farms') }}" class="{{ 'active' if 'farm' in request.endpoint }}">My Farms</a></li>
+
+      <li><a href="{{ url_for('farmer.schedules') }}" class="{{ 'active' if 'schedule' in request.endpoint }}">Schedules</a></li>
+
+      <li>
+
+        <a href="{{ url_for('farmer.notifications') }}" class="notif-link {{ 'active' if 'notification' in request.endpoint }}">
+
+          Alerts
+
+          {% set unread = unread_count if unread_count is defined else 0 %}
+
+          {% if unread > 0 %}<span class="badge-notif">{{ unread }}</span>{% endif %}
+
+        </a>
+
+      </li>
+
+    {% else %}
+
+      <li><a href="{{ url_for('operator.dashboard') }}" class="{{ 'active' if request.endpoint == 'operator.dashboard' }}">Dashboard</a></li>
+
+      <li><a href="{{ url_for('operator.crops') }}" class="{{ 'active' if 'crop' in request.endpoint }}">Crop Catalog</a></li>
+
+      <li><a href="{{ url_for('operator.advisories') }}" class="{{ 'active' if 'advisor' in request.endpoint }}">Advisories</a></li>
+
+      <li><a href="{{ url_for('operator.zones') }}" class="{{ 'active' if 'zone' in request.endpoint }}">Zones</a></li>
+
+      <li><a href="{{ url_for('operator.farmers') }}" class="{{ 'active' if 'farmer' in request.endpoint }}">Farmers</a></li>
+
+      <li><a href="{{ url_for('operator.thresholds') }}" class="{{ 'active' if 'threshold' in request.endpoint }}">Thresholds</a></li>
+
+    {% endif %}
+
+  </ul>
+
+  <div class="nav-user">
+
+    <span class="user-chip">
+
+      <span class="user-avatar">{{ current_user.name[0].upper() }}</span>
+
+      <span class="user-name">{{ current_user.name }}</span>
+
+      <span class="role-tag role-{{ current_user.role }}">{{ current_user.role|title }}</span>
+
+    </span>
+
+    <a href="{{ url_for('auth.profile') }}" class="btn-icon" title="Profile">&#9881;</a>
+
+    <a href="{{ url_for('auth.logout') }}" class="btn-icon" title="Logout">&#10134;</a>
+
+  </div>
+
+</nav>
+
+{% endif %}
+
+<main class="main-content {% if not current_user.is_authenticated %}auth-page{% endif %}">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+
+    {% if messages %}
+
+      <div class="flash-container">
+
+        {% for category, message in messages %}
+
+          <div class="flash flash-{{ category }}">
+
+            <span>{{ message }}</span>
+
+            <button class="flash-close" onclick="this.parentElement.remove()">&#x2715;</button>
+
+          </div>
+
+        {% endfor %}
+
+      </div>
+
+    {% endif %}
+
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+{% block extra_js %}{% endblock %}
+
+</body>
+
+</html>

@@ -1,0 +1,44 @@
+{% extends "shared/base.html" %}
+{% block title %}All Zones — CropIQ{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div>
+   <h1 class="page-title">📍 All Zones</h1>
+   <p class="page-sub">Platform-wide view of all agro-zones across farmers</p>
+ </div>
+</div>
+
+<div class="card">
+ {% if zones %}
+ <div class="table-wrap">
+   <table>
+     <thead>
+       <tr>
+         <th>Zone</th>
+         <th>Farm</th>
+         <th>Farmer</th>
+         <th>Area (acres)</th>
+         <th>Soil Type</th>
+       </tr>
+     </thead>
+     <tbody>
+       {% for z in zones %}
+       <tr>
+         <td><span class="zone-pill">{{ z.zone_name }}</span></td>
+         <td>{{ z.farm_name }}</td>
+         <td>{{ z.farmer_name }}</td>
+         <td>{{ z.area or '—' }}</td>
+         <td>{{ z.soil_type or '—' }}</td>
+       </tr>
+       {% endfor %}
+     </tbody>
+   </table>
+ </div>
+ {% else %}
+   <div class="empty-state">
+     <div class="empty-icon">📍</div>
+     <p>No zones found. Zones are created by farmers under their farm profiles.</p>
+   </div>
+ {% endif %}
+</div>
+{% endblock %}

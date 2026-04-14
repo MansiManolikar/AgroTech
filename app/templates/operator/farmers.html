@@ -1,0 +1,44 @@
+{% extends "shared/base.html" %}
+{% block title %}Farmers — CropIQ{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div>
+   <h1 class="page-title">👤 Registered Farmers</h1>
+   <p class="page-sub">All farmers registered on the platform</p>
+ </div>
+</div>
+
+<div class="card">
+ {% if farmers %}
+ <div class="table-wrap">
+   <table>
+     <thead>
+       <tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th></tr>
+     </thead>
+     <tbody>
+       {% for f in farmers %}
+       <tr>
+         <td>
+           <div style="display:flex;align-items:center;gap:10px">
+             <div style="width:34px;height:34px;border-radius:50%;background:var(--green-100);color:var(--green-900);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem">
+               {{ f.name[0].upper() }}
+             </div>
+             <span>{{ f.name }}</span>
+           </div>
+         </td>
+         <td>{{ f.email }}</td>
+         <td>{{ f.phone or '—' }}</td>
+         <td>{{ f.created_at.strftime('%d %b %Y') if f.created_at else '—' }}</td>
+       </tr>
+       {% endfor %}
+     </tbody>
+   </table>
+ </div>
+ {% else %}
+   <div class="empty-state">
+     <div class="empty-icon">👤</div>
+     <p>No farmers have registered yet.</p>
+   </div>
+ {% endif %}
+</div>
+{% endblock %}

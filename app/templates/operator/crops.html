@@ -1,0 +1,117 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Crop Catalog — CropIQ{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+  <div>
+
+    <h1 class="page-title">&#127807; Crop Catalog</h1>
+
+    <p class="page-sub">Manage master crop database — water requirements, seasons and growth periods</p>
+
+  </div>
+
+  <a href="{{ url_for('operator.add_crop') }}" class="btn btn-primary">&#43; Add Crop</a>
+
+</div>
+
+<div class="card">
+
+  {% if crops %}
+
+  <div class="table-wrap">
+
+    <table>
+
+      <thead>
+
+        <tr>
+
+          <th>Crop Name</th>
+
+          <th>Type</th>
+
+          <th>Season</th>
+
+          <th>Water Req. (mm/day)</th>
+
+          <th>Growth Days</th>
+
+          <th>Actions</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {% for c in crops %}
+
+        <tr>
+
+          <td><strong>{{ c.crop_name }}</strong></td>
+
+          <td>{{ c.crop_type or '—' }}</td>
+
+          <td>
+
+            {% if c.season %}
+
+            <span class="badge badge-green">{{ c.season }}</span>
+
+            {% else %}—{% endif %}
+
+          </td>
+
+          <td>{{ '%.2f'|format(c.water_req_mm) if c.water_req_mm else '—' }}</td>
+
+          <td>{{ c.growth_days or '—' }}</td>
+
+          <td>
+
+            <div style="display:flex;gap:6px">
+
+              <a href="{{ url_for('operator.edit_crop', crop_id=c.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+
+              <form method="POST" action="{{ url_for('operator.delete_crop', crop_id=c.id) }}"
+
+                    data-confirm="Delete crop '{{ c.crop_name }}'?">
+
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+
+              </form>
+
+            </div>
+
+          </td>
+
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  {% else %}
+
+    <div class="empty-state">
+
+      <div class="empty-icon">&#127807;</div>
+
+      <p>No crops in the catalog yet. Add your first crop to get started.</p>
+
+      <a href="{{ url_for('operator.add_crop') }}" class="btn btn-primary">Add First Crop</a>
+
+    </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}

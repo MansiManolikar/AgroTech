@@ -1,1 +1,29 @@
-login
+{% extends "shared/base.html" %}
+{% block title %}Login — CropIQ Portal{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <div class="auth-logo">&#127807;</div>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Smart Crop Insights & Irrigation Management</p>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="form-group">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required
+                autocomplete="current-password" />
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="remember" name="remember" style="width:auto" />
+            <label for="remember" style="margin:0;font-weight:400">Remember me</label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Sign In</button>
+    </form>
+    <div class="auth-footer">
+        Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>
+    </div>
+</div>
+{% endblock %}

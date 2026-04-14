@@ -1,1 +1,142 @@
-dashboard
+v  {% extends "shared/base.html" %}
+{% block title %}Farmer Dashboard — CropIQ{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div>
+   <h1 class="page-title">Good {{ 'morning' if now_hour < 12 else ('afternoon' if now_hour < 17 else 'evening') }}, {{ current_user.name.split()[0] }} 👋</h1>
+   <p class="page-sub">Here's your farm overview for today</p>
+ </div>
+ <a href="{{ url_for('farmer.add_farm') }}" class="btn btn-primary">+ Add Farm</a>
+</div>
+
+<!-- Stat cards -->
+<div class="grid-4" style="margin-bottom:1.5rem">
+ <div class="stat-card stat-green">
+   <div class="stat-label">My Farms</div>
+   <div class="stat-value">{{ farms|length }}</div>
+   <div class="stat-sub">registered farms</div>
+ </div>
+ <div class="stat-card stat-blue">
+   <div class="stat-label">Schedules</div>
+   <div class="stat-value">{{ schedules|length }}</div>
+   <div class="stat-sub">upcoming/recent</div>
+ </div>
+ <div class="stat-card stat-amber">
+   <div class="stat-label">Alerts</div>
+   <div class="stat-value">{{ notif_count }}</div>
+   <div class="stat-sub">unread notifications</div>
+ </div>
+ <div class="stat-card stat-red">
+   <div class="stat-label">Latest Moisture</div>
+   <div class="stat-value">{{ '%.1f'|format(latest_sensor.value) if latest_sensor else '—' }}</div>
+   <div class="stat-sub">{{ latest_sensor.unit if latest_sensor else 'no data yet' }}</div>
+ </div>
+</div>
+
+<div class="grid-2">
+ <!-- Recent Schedules -->
+ <div class="card">
+   <div class="card-header">
+     <span class="card-title">📅 Recent Schedules</span>
+     <a href="{{ url_for('farmer.schedules') }}" class="btn btn-secondary btn-sm">View All</a>
+   </div>
+   {% if schedules %}
+     <div class="table-wrap">
+       <table>
+         <thead>
+           <tr>
+             <th>Zone</th>
+             <th>Date</th>
+             <th>Method</th>
+             <th>Status</th>
+           </tr>
+         </thead>
+         <tbody>
+           {% for s in schedules %}
+           <tr>
+             <td><span class="zone-pill">{{ s.zone_name }}</span></td>
+             <td>{{ s.scheduled_date }}</td>
+             <td>{{ s.method|title }}</td>
+             <td>
+               <span class="badge
+                 {% if s.status == 'completed' %}badge-green
+                 {% elif s.status == 'pending' %}badge-blue
+                 {% elif s.status == 'conflict' %}badge-red
+                 {% else %}badge-gray{% endif %}">
+                 {{ s.status|title }}
+               </span>
+             </td>
+           </tr>
+           {% endfor %}
+         </tbody>
+       </table>
+     </div>
+   {% else %}
+     <div class="empty-state">
+       <div class="empty-icon">📅</div>
+       <p>No schedules yet. Add a farm and create your first irrigation schedule.</p>
+       <a href="{{ url_for('farmer.farms') }}" class="btn btn-primary btn-sm">Go to My Farms</a>
+     </div>
+   {% endif %}
+ </div>
+
+ <!-- Notifications -->
+ <div class="card">
+   <div class="card-header">
+     <span class="card-title">🔔 Recent Alerts</span>
+     <a href="{{ url_for('farmer.notifications') }}" class="btn btn-secondary btn-sm">View All</a>
+   </div>
+   {% if notifications %}
+     {% for n in notifications %}
+     <div class="notif-item">
+       <div class="notif-dot {{ 'read' if n.is_read }}"></div>
+       <div>
+         <div class="notif-msg">{{ n.message }}</div>
+         <div class="notif-time">{{ n.created_at.strftime('%d %b %Y, %I:%M %p') if n.created_at else '' }}</div>
+       </div>
+     </div>
+     {% endfor %}
+   {% else %}
+     <div class="empty-state">
+       <div class="empty-icon">✓</div>
+       <p>No new alerts. You're all caught up!</p>
+     </div>
+   {% endif %}
+ </div>
+</div>
+
+<!-- My Farms Quick View -->
+{% if farms %}
+<div class="card" style="margin-top:1.25rem">
+ <div class="card-header">
+   <span class="card-title">🌿 My Farms</span>
+   <a href="{{ url_for('farmer.farms') }}" class="btn btn-secondary btn-sm">Manage Farms</a>
+ </div>
+ <div class="grid-3">
+   {% for farm in farms %}
+   <div style="border:1px solid var(--gray-100);border-radius:var(--radius-sm);padding:14px">
+     <div style="font-weight:700;margin-bottom:4px">{{ farm.farm_name }}</div>
+     <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:8px">
+       {{ farm.address or 'No address set' }}
+       {% if farm.total_area %} • {{ farm.total_area }} acres{% endif %}
+     </div>
+     <a href="{{ url_for('farmer.zones', farm_id=farm.id) }}" class="btn btn-secondary btn-sm">View Zones</a>
+   </div>
+   {% endfor %}
+ </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+ const nowHour = new Date().getHours();
+ // Inject hour into Jinja context isn't possible server-side here,
+ // so we patch the greeting client-side
+ const greetings = ['morning','morning','morning','morning','morning','morning','morning','morning','morning','morning','morning','morning','afternoon','afternoon','afternoon','afternoon','afternoon','evening','evening','evening','evening','evening','evening','evening'];
+ document.querySelector('.page-title').innerHTML =
+   document.querySelector('.page-title').innerHTML.replace(
+     /Good \w+/, 'Good ' + greetings[nowHour]
+   );
+</script>
+{% endblock %}

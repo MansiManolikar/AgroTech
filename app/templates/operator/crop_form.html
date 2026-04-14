@@ -1,0 +1,120 @@
+
+{% extends "shared/base.html" %}
+
+{% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Crop — CropIQ{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+  <div>
+
+    <h1 class="page-title">{{ 'Edit' if action=='edit' else 'Add New' }} Crop</h1>
+
+    <p class="page-sub">{{ 'Update crop details in the catalog' if action=='edit' else 'Add a new crop to the master catalog' }}</p>
+
+  </div>
+
+  <a href="{{ url_for('operator.crops') }}" class="btn btn-secondary">&#8592; Crop Catalog</a>
+
+</div>
+
+<div class="card" style="max-width:640px">
+
+  <form method="POST">
+
+    <div class="form-row">
+
+      <div class="form-group">
+
+        <label>Crop Name *</label>
+
+        <input type="text" name="crop_name"
+
+               value="{{ form.get('crop_name','') if form is mapping else form.crop_name or '' }}"
+
+               placeholder="e.g. Sugarcane" required/>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Crop Type</label>
+
+        <select name="crop_type">
+
+          <option value="">Select type</option>
+
+          {% for t in ['Cereal','Pulse','Oilseed','Vegetable','Fruit','Fibre','Cash Crop','Spice','Fodder'] %}
+
+          <option {% if (form.get('crop_type','') if form is mapping else form.crop_type or '') == t %}selected{% endif %}>{{ t }}</option>
+
+          {% endfor %}
+
+        </select>
+
+      </div>
+
+    </div>
+
+    <div class="form-row">
+
+      <div class="form-group">
+
+        <label>Season</label>
+
+        <select name="season">
+
+          <option value="">Select season</option>
+
+          {% for s in ['Kharif','Rabi','Zaid','Perennial','Year-round'] %}
+
+          <option {% if (form.get('season','') if form is mapping else form.season or '') == s %}selected{% endif %}>{{ s }}</option>
+
+          {% endfor %}
+
+        </select>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Water Requirement (mm/day)</label>
+
+        <input type="number" name="water_req_mm" step="0.01"
+
+               value="{{ form.get('water_req_mm','') if form is mapping else form.water_req_mm or '' }}"
+
+               placeholder="e.g. 6.5"/>
+
+      </div>
+
+    </div>
+
+    <div class="form-group">
+
+      <label>Growth Period (days)</label>
+
+      <input type="number" name="growth_days"
+
+             value="{{ form.get('growth_days','') if form is mapping else form.growth_days or '' }}"
+
+             placeholder="e.g. 120"/>
+
+      <span class="form-hint">Average days from sowing to harvest</span>
+
+    </div>
+
+    <div style="display:flex;gap:10px">
+
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if action=='edit' else 'Add to Catalog' }}</button>
+
+      <a href="{{ url_for('operator.crops') }}" class="btn btn-secondary">Cancel</a>
+
+    </div>
+
+  </form>
+
+</div>
+
+{% endblock %}
