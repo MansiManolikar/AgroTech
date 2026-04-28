@@ -1,1 +1,216 @@
-index
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>AgriTech Portal | Smart Crop Insights & Irrigation Management</title>
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background:#fff;">
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="flash-container">
+   {% for category, message in messages %}
+   <div class="flash {{ category }}">{{ message }}</div>
+   {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+
+ <!-- NAVBAR -->
+ <nav class="landing-nav">
+   <div class="nav-logo">
+     <span style="font-size:26px;">🌾</span>
+     <span>AgriTech Portal</span>
+   </div>
+   <div class="nav-links">
+     <a href="#features">Features</a>
+     <a href="#services">Services</a>
+     <a href="#about">About</a>
+   </div>
+
+   <div class="nav-cta">
+     <a href="{{ url_for('auth.login') }}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.4);">Login</a>
+     <a href="{{ url_for('auth.register') }}" class="btn btn-yellow">Get Started</a>
+   </div>
+ </nav>
+
+ <!-- HERO -->
+ <section class="hero">
+   <div class="hero-pattern"></div>
+   <div class="hero-content">
+     <div>
+       <div class="hero-tag">🌱 Smart Agriculture Platform</div>
+       <h1>Grow Smarter with <span>Data-Driven</span> Farming</h1>
+       <p>Monitor soil moisture, get AI-powered irrigation recommendations, receive real-time weather alerts, and manage your entire farm from one intelligent dashboard.</p>
+       <div class="hero-buttons">
+         <a href="{{ url_for('auth.register') }}" class="btn btn-yellow" style="font-size:16px;padding:14px 32px;">Start Free Today →</a>
+         <a href="{{ url_for('auth.login') }}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.4);font-size:16px;padding:14px 32px;">Login to Portal</a>
+       </div>
+     </div>
+
+     <div class="hero-visual">
+       <div class="hero-dashboard-preview">
+         <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:16px;font-weight:600;letter-spacing:1px;">LIVE DASHBOARD PREVIEW</div>
+         <div class="dashboard-preview-item">
+           <div class="preview-icon" style="background:rgba(76,175,80,0.3);">💧</div>
+           <div>
+             <div class="preview-label">Soil Moisture</div>
+             <div class="preview-value">68%</div>
+           </div>
+           <div style="margin-left:auto;"><span class="badge badge-green">Good</span></div>
+         </div>
+         <div class="dashboard-preview-item">
+           <div class="preview-icon" style="background:rgba(255,193,7,0.3);">🌡️</div>
+           <div>
+             <div class="preview-label">Temperature</div>
+             <div class="preview-value">32°C</div>
+           </div>
+           <div style="margin-left:auto;"><span class="badge badge-yellow">Warm</span></div>
+         </div>
+         <div class="dashboard-preview-item">
+           <div class="preview-icon" style="background:rgba(33,150,243,0.3);">🌧️</div>
+           <div>
+             <div class="preview-label">Rain Forecast</div>
+             <div class="preview-value">12mm</div>
+           </div>
+           <div style="margin-left:auto;"><span class="badge badge-blue">Today</span></div>
+         </div>
+         <div style="background:rgba(229,57,53,0.15);border:1px solid rgba(229,57,53,0.3);border-radius:12px;padding:14px;margin-top:8px;">
+           <div style="font-size:12px;color:rgba(255,255,255,0.6);">🚨 RECOMMENDATION</div>
+           <div style="color:#fff;font-weight:600;margin-top:4px;">Skip Irrigation Today</div>
+           <div style="font-size:12px;color:rgba(255,255,255,0.6);">Rain expected, soil moisture adequate</div>
+         </div>
+       </div>
+     </div>
+   </div>
+ </section>
+
+ <!-- FEATURES -->
+ <section class="features-section" id="features">
+   <div class="section-header">
+     <div class="section-tag">🌿 Core Features</div>
+     <h2>Everything You Need to Farm Smart</h2>
+     <p>From real-time sensor monitoring to expert advisories — all in one unified platform.</p>
+   </div>
+   <div class="features-grid">
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">💧</div>
+       <h3>Smart Irrigation</h3>
+       <p>Rule-based irrigation scheduling powered by real-time soil moisture data, weather forecasts, and crop stage information.</p>
+     </div>
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">📊</div>
+       <h3>Live Monitoring</h3>
+       <p>Interactive charts showing soil moisture trends, temperature, humidity, and rainfall patterns over time.</p>
+     </div>
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">🌦️</div>
+       <h3>Weather Integration</h3>
+       <p>Real-time weather conditions with alerts for extreme temperatures, rain events, and drought warnings.</p>
+     </div>
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">🔔</div>
+       <h3>Smart Alerts</h3>
+       <p>Threshold-based alerts for low moisture, upcoming rain, disease risk conditions, and irrigation schedules.</p>
+     </div>
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">📋</div>
+       <h3>Expert Advisories</h3>
+       <p>Agronomists publish crop-specific advisories on pest management, soil health, and seasonal best practices.</p>
+     </div>
+     <div class="feature-card animate-fade-up">
+       <div class="feature-icon">🗺️</div>
+       <h3>Zone Management</h3>
+       <p>Organize farms by agro-ecological zones with soil type, climate, and regional growing condition data.</p>
+     </div>
+   </div>
+ </section>
+
+ <!-- SERVICES -->
+ <section class="services-section" id="services">
+   <div class="section-header">
+     <div class="section-tag">⚙️ Our Services</div>
+     <h2>Eco & Agriculture Services</h2>
+     <p>Comprehensive agricultural support from field to table.</p>
+   </div>
+   <div class="services-grid">
+     <div class="service-card">
+       <div class="service-card-img">🌾</div>
+       <div class="service-card-body">
+         <span class="badge badge-green" style="margin-bottom:10px;">Agricultural Consulting</span>
+         <h3>Crop Advisory Services</h3>
+         <p>Expert guidance on crop selection, planting schedules, and agronomic practices for maximum yield.</p>
+       </div>
+     </div>
+     <div class="service-card">
+       <div class="service-card-img">🌱</div>
+       <div class="service-card-body">
+         <span class="badge badge-yellow" style="margin-bottom:10px;">Soil Enhancement</span>
+         <h3>Soil Fertilization</h3>
+         <p>Comprehensive soil testing and enhancement strategies for optimal crop growth and productivity.</p>
+       </div>
+     </div>
+     <div class="service-card">
+       <div class="service-card-img">🐄</div>
+       <div class="service-card-body">
+         <span class="badge badge-blue" style="margin-bottom:10px;">Farm Management</span>
+         <h3>Dairy & Livestock</h3>
+         <p>Integrated farm management supporting both crop cultivation and livestock operations.</p>
+       </div>
+     </div>
+   </div>
+ </section>
+
+ <!-- CTA -->
+ <section class="cta-section" id="about">
+   <h2>Ready to Transform Your Farm?</h2>
+   <p>Join thousands of farmers already using AgriTech Portal to save water, boost yields, and make smarter decisions.</p>
+   <div class="cta-buttons">
+     <a href="{{ url_for('auth.register') }}" class="btn btn-yellow" style="font-size:16px;padding:14px 36px;">Register as Farmer</a>
+     <a href="{{ url_for('auth.login') }}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.4);font-size:16px;padding:14px 36px;">Operator Login</a>
+   </div>
+ </section>
+
+ <!-- FOOTER -->
+ <footer class="landing-footer">
+   <div class="footer-grid">
+     <div class="footer-brand">
+       <h3>🌾 AgriTech Portal</h3>
+       <p>Smart Crop Insights & Irrigation Management Platform — Empowering farmers with data-driven decisions.</p>
+     </div>
+     <div class="footer-links">
+       <h4>Platform</h4>
+       <a href="{{ url_for('auth.login') }}">Farmer Login</a>
+       <a href="{{ url_for('auth.login') }}">Operator Login</a>
+       <a href="{{ url_for('auth.register') }}">Register</a>
+     </div>
+     <div class="footer-links">
+       <h4>Features</h4>
+       <a href="#">Irrigation</a>
+       <a href="#">Monitoring</a>
+       <a href="#">Advisories</a>
+     </div>
+     <div class="footer-links">
+       <h4>Contact</h4>
+       <a href="#">support@agritech.com</a>
+       <a href="#">+91 98765 43210</a>
+       <a href="#">Bengaluru, Karnataka</a>
+     </div>
+   </div>
+   <div class="footer-bottom">
+     <span>© 2026 AgriTech Portal. Built for Smart Agriculture.</span>
+     <span>Made with 🌱 for Indian Farmers</span>
+   </div>
+ </footer>
+
+ <script>
+   const observer = new IntersectionObserver(entries => {
+     entries.forEach(e => { if (e.isIntersecting) e.target.style.opacity = 1; });
+   });
+   document.querySelectorAll('.animate-fade-up').forEach(el => {
+     el.style.opacity = 0; observer.observe(el);
+   });
+ </script>
+</body>
+</html>

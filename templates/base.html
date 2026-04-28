@@ -1,1 +1,241 @@
-base
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>{% block title %}AgriTech Portal{% endblock %} | Smart Crop Insights</title>
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+ <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="flash-container">
+   {% for category, message in messages %}
+   <div class="flash {{ category }}">{{ message }}</div>
+   {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+
+ <div class="app-layout">
+   <!-- SIDEBAR -->
+   <aside class="sidebar">
+     <div class="sidebar-logo">
+       <div class="logo-icon">🌾</div>
+       <div class="logo-text">
+         <h3>AgriTech</h3>
+         <span>Smart Portal</span>
+       </div>
+     </div>
+
+     <div class="sidebar-user">
+       <div class="user-avatar">{{ session.user_name[0]|upper if session.user_name else 'U' }}</div>
+       <div class="user-info">
+         <div class="user-name">{{ session.user_name }}</div>
+         <div class="user-role">{{ session.role }}</div>
+       </div>
+     </div>
+
+     <nav class="sidebar-nav">
+       {% if session.role == 'farmer' %}
+       <div class="nav-section-title">Main</div>
+       <a href="{{ url_for('farmer.dashboard') }}" class="nav-item {% if request.endpoint == 'farmer.dashboard' %}active{% endif %}">
+         <span class="nav-icon">🏠</span><span>Dashboard</span>
+       </a>
+       <a href="{{ url_for('farmer.profile') }}" class="nav-item {% if request.endpoint == 'farmer.profile' %}active{% endif %}">
+         <span class="nav-icon">🌿</span><span>My Farm</span>
+       </a>
+       <a href="{{ url_for('farmer.schedule') }}" class="nav-item {% if request.endpoint == 'farmer.schedule' %}active{% endif %}">
+         <span class="nav-icon">💧</span><span>Irrigation</span>
+       </a>
+       <a href="{{ url_for('farmer.crop_catalog') }}" class="nav-item {% if request.endpoint == 'farmer.crop_catalog' %}active{% endif %}">
+         <span class="nav-icon">📚</span><span>Crop Catalog</span>
+       </a>
+       <a href="{{ url_for('farmer.recommendation') }}" class="nav-item {% if request.endpoint == 'farmer.recommendation' %}active{% endif %}">
+         <span class="nav-icon">🤖</span><span>AI Recommendation</span>
+       </a>
+       <a href="{{ url_for('farmer.advisories') }}" class="nav-item {% if request.endpoint == 'farmer.advisories' %}active{% endif %}">
+         <span class="nav-icon">📋</span><span>Advisories</span>
+       </a>
+
+       {% else %}
+       <div class="nav-section-title">Operations</div>
+       <a href="{{ url_for('operator.dashboard') }}" class="nav-item {% if request.endpoint == 'operator.dashboard' %}active{% endif %}">
+         <span class="nav-icon">📊</span><span>Dashboard</span>
+       </a>
+       <a href="{{ url_for('operator.farmers') }}" class="nav-item {% if request.endpoint == 'operator.farmers' %}active{% endif %}">
+         <span class="nav-icon">👩‍🌾</span><span>Farmers</span>
+       </a>
+       <div class="nav-section-title">Management</div>
+       <a href="{{ url_for('operator.zones') }}" class="nav-item {% if request.endpoint == 'operator.zones' %}active{% endif %}">
+         <span class="nav-icon">🗺️</span><span>Agro Zones</span>
+       </a>
+       <a href="{{ url_for('operator.crops') }}" class="nav-item {% if request.endpoint == 'operator.crops' %}active{% endif %}">
+         <span class="nav-icon">🌱</span><span>Crops</span>
+       </a>
+       <a href="{{ url_for('operator.advisories') }}" class="nav-item {% if request.endpoint == 'operator.advisories' %}active{% endif %}">
+         <span class="nav-icon">📢</span><span>Advisories</span>
+       </a>
+       {% endif %}
+     </nav>
+
+     <div class="sidebar-footer">
+       <a href="{{ url_for('auth.logout') }}" class="nav-item">
+         <span class="nav-icon">🚪</span><span>Logout</span>
+       </a>
+     </div>
+   </aside>
+
+   <!-- MAIN CONTENT -->
+   <main class="main-content">
+     <div class="topbar">
+       <div class="topbar-title">
+         <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+         <p>{% block page_subtitle %}Welcome back, {{ session.user_name }}{% endblock %}</p>
+       </div>
+       <div class="topbar-actions">
+         {% if session.user_id %}
+         <!-- NOTIFICATION BELL -->
+         <div style="position:relative;" id="notif-wrapper">
+           <button class="topbar-icon-btn" id="notif-bell" title="Notifications"
+                   onclick="toggleNotifDropdown()" style="position:relative;">
+             🔔
+             <span class="notification-dot" id="notif-badge"
+                   style="display:none;position:absolute;top:2px;right:2px;background:#c62828;
+                          color:#fff;font-size:10px;font-weight:700;border-radius:99px;
+                          min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px;">
+               0
+             </span>
+           </button>
+
+           <!-- Dropdown preview -->
+           <div id="notif-dropdown" style="display:none;position:absolute;right:0;top:48px;
+                width:340px;background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,0.15);
+                border:1px solid #e8e8e8;z-index:999;overflow:hidden;">
+             <div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;
+                         display:flex;justify-content:space-between;align-items:center;">
+               <span style="font-weight:700;font-size:14px;">Notifications</span>
+               <div style="display:flex;gap:10px;align-items:center;">
+                 <form method="POST" action="/notifications/mark-all-read" style="margin:0;">
+                   <button type="submit" style="background:none;border:none;font-size:12px;
+                           color:#2e7d32;cursor:pointer;font-weight:600;">Mark all read</button>
+                 </form>
+                 <a href="/notifications" style="font-size:12px;color:#2e7d32;font-weight:600;">See all</a>
+               </div>
+             </div>
+             <div id="notif-list" style="max-height:320px;overflow-y:auto;">
+               <div style="padding:24px;text-align:center;color:#aaa;font-size:13px;">Loading...</div>
+             </div>
+           </div>
+         </div>
+         {% endif %}
+         <a href="{% if session.role == 'operator' %}{{ url_for('operator.dashboard') }}{% else %}{{ url_for('farmer.profile') }}{% endif %}" style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--green-faint);border-radius:50px;font-size:13px;font-weight:600;color:var(--green-dark);">
+           <span>{{ session.user_name }}</span>
+         </a>
+       </div>
+     </div>
+
+     <div class="page-content">
+       {% block content %}{% endblock %}
+     </div>
+   </main>
+ </div>
+
+ <script>
+   setTimeout(() => {
+     document.querySelectorAll('.flash').forEach(el => {
+       el.style.opacity = '0'; el.style.transform = 'translateX(100px)';
+       el.style.transition = 'all 0.4s ease';
+       setTimeout(() => el.remove(), 400);
+     });
+   }, 4000);
+ </script>
+
+ {% if session.user_id %}
+ <script>
+ const NOTIF_COLORS = {
+   critical:       '#ffebee', warning: '#fff3e0',
+   advisory:       '#e8f5e9', success: '#e8f5e9',
+   recommendation: '#e3f2fd', info:    '#f5f5f5'
+ };
+ const NOTIF_BORDER = {
+   critical: '#c62828', warning: '#e65100',
+   advisory: '#2e7d32', success: '#2e7d32',
+   recommendation: '#1565c0', info: '#bbb'
+ };
+
+ async function fetchNotifPreview() {
+   try {
+     const res  = await fetch('/notifications/preview');
+     const data = await res.json();
+     const badge = document.getElementById('notif-badge');
+
+     if (data.unread > 0) {
+       badge.style.display = 'inline-block';
+       badge.textContent = data.unread > 9 ? '9+' : data.unread;
+  
+     } else {
+       badge.style.display = 'none';
+
+     }
+     // Populate dropdown list
+     const list = document.getElementById('notif-list');
+     if (!data.notifications.length) {
+       list.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-size:13px;">No notifications yet</div>';
+       return;
+     }
+     list.innerHTML = data.notifications.map(n => `
+       <div style="padding:12px 18px;border-bottom:1px solid #f5f5f5;
+                   background:${n.is_read ? '#fff' : NOTIF_COLORS[n.type] || '#f5f5f5'};
+                   border-left:3px solid ${n.is_read ? 'transparent' : NOTIF_BORDER[n.type] || '#bbb'};
+                   display:flex;gap:12px;align-items:flex-start;">
+         <div style="flex:1;min-width:0;">
+           <div style="font-size:13px;font-weight:${n.is_read ? '400' : '700'};
+                       color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+             ${n.title}
+           </div>
+           <div style="font-size:12px;color:#777;margin-top:2px;
+                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+             ${n.message}
+           </div>
+           <div style="font-size:11px;color:#bbb;margin-top:4px;">${n.created_at}</div>
+         </div>
+         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+           <form method="POST" action="/notifications/mark-read/${n.id}" style="margin:0;">
+             <button type="submit" style="background:#e8f5e9;border:none;border-radius:6px;
+                     padding:3px 8px;font-size:11px;color:#2e7d32;cursor:pointer;font-weight:600;"
+                     title="Mark as read (removes notification)">✓ Done</button>
+           </form>
+         </div>
+       </div>
+     `).join('');
+   } catch(e) {}
+ }
+
+ function toggleNotifDropdown() {
+   const dd = document.getElementById('notif-dropdown');
+   if (dd.style.display === 'none') {
+     dd.style.display = 'block';
+     fetchNotifPreview();
+   } else {
+     dd.style.display = 'none';
+   }
+ }
+
+ // Close dropdown when clicking outside
+ document.addEventListener('click', (e) => {
+   const wrapper = document.getElementById('notif-wrapper');
+   if (wrapper && !wrapper.contains(e.target)) {
+     document.getElementById('notif-dropdown').style.display = 'none';
+   }
+ });
+ 
+ fetchNotifPreview();
+ setInterval(fetchNotifPreview, 30000);
+ </script>
+ {% endif %}
+
+ {% block scripts %}{% endblock %}
+</body>
+</html>
