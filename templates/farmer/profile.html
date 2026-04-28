@@ -1,1 +1,438 @@
-profile
+{% extends 'base.html' %}
+{% block title %}My Farm Profile{% endblock %}
+{% block page_title %}My Farm Profile{% endblock %}
+{% block page_subtitle %}Manage your personal details and all farm records{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start;">
+ <div class="card">
+   <div class="card-header">
+     <div>
+       <div class="card-title">👤 Personal Information</div>
+       <div class="card-subtitle">Update your account details</div>
+     </div>
+   </div>
+   <form method="POST">
+     <input type="hidden" name="action" value="update_user">
+     <div class="form-group">
+       <label>Full Name *</label>
+       <input type="text" name="name" class="form-control"
+              value="{{ user.name }}" required
+              minlength="3" maxlength="100"
+              pattern="[A-Za-z\s]+"
+              title="Name must contain only letters and spaces (min 3 characters)">
+       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Letters and spaces only, min 3 characters</div>
+     </div>
+     <div class="form-group">
+       <label>Email Address</label>
+       <input type="email" class="form-control" value="{{ user.email }}" disabled style="opacity:0.6;cursor:not-allowed;">
+     </div>
+     <div class="form-group">
+       <label>Phone Number</label>
+       <input type="tel" name="phone" class="form-control"
+              value="{{ user.phone or '' }}"
+              placeholder="e.g. 9876543210"
+              pattern="[6-9][0-9]{9}"
+              maxlength="10"
+              inputmode="numeric"
+              title="Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9">
+       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">10 digits, must start with 6–9 (optional)</div>
+     </div>
+     <div class="form-group">
+       <label>Role</label>
+       <input type="text" class="form-control" value="{{ user.role|title }}" disabled style="opacity:0.6;cursor:not-allowed;">
+     </div>
+     <div id="cropSuggestion" style="display:none;background:#e8f5e9;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#2e7d32;border:1px solid #a5d6a7;"></div>
+     <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+   </form>
+ </div>
+
+ <div>
+   {% if active_farm %}
+   <div class="card" style="margin-bottom:20px;border-top:4px solid var(--green-light);">
+     <div class="card-header">
+       <div>
+         <div class="card-title">🌾 Active Farm: {{ active_farm.name }}</div>
+         <div class="card-subtitle">{{ active_farm.location }}</div>
+       </div>
+       <span class="badge badge-green">Active</span>
+     </div>
+     <div class="sensor-grid">
+       <div class="sensor-item">
+         <div class="s-icon">🌱</div>
+         <div class="s-value">{{ active_farm.crop_name or '—' }}</div>
+         <div class="s-label">Current Crop</div>
+       </div>
+       <div class="sensor-item">
+         <div class="s-icon">📐</div>
+         <div class="s-value">{{ active_farm.area or '—' }}</div>
+         <div class="s-label">Area (acres)</div>
+       </div>
+       <div class="sensor-item">
+         <div class="s-icon">🗺️</div>
+         <div class="s-value" style="font-size:14px;">{{ active_farm.zone_name or '—' }}</div>
+         <div class="s-label">Agro Zone</div>
+       </div>
+       <div class="sensor-item">
+         <div class="s-icon">💧</div>
+         <div class="s-value" style="font-size:14px;">{{ active_farm.irrigation_type or '—' }}</div>
+         <div class="s-label">Irrigation Type</div>
+       </div>
+     </div>
+     <div class="divider"></div>
+     <div style="display:flex;gap:12px;flex-wrap:wrap;">
+       <div class="meta-chip">🪨 {{ active_farm.soil_type or 'N/A' }}</div>
+       <div class="meta-chip">📅 Planted: {{ active_farm.planting_date or 'N/A' }}</div>
+     </div>
+   </div>
+   {% endif %}
+
+   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+     <button class="btn btn-primary" onclick="openModal('farmModal')" style="flex:1;justify-content:center;">
+       {% if farm %}✏️ Edit Selected Farm{% else %}➕ Create Farm{% endif %}
+     </button>
+     <a href="{{ url_for('farmer.profile') }}{% if active_farm %}?farm_id={{ active_farm.id }}&new_farm=1{% endif %}"
+        class="btn btn-outline" style="flex:1;justify-content:center;">➕ New Farm</a>
+     {% if active_farm %}
+     <a href="{{ url_for('farmer.dashboard', farm_id=active_farm.id) }}" class="btn btn-outline" style="flex:1;justify-content:center;">📊 Dashboard</a>
+     {% endif %}
+   </div>
+
+   <div class="card" style="margin-bottom:20px;">
+     <div class="card-header">
+       <div>
+         <div class="card-title">🌾 All Farms</div>
+         <div class="card-subtitle">{{ farms|length }} farm{% if farms|length != 1 %}s{% endif %} linked to your account</div>
+       </div>
+     </div>
+     {% if farms %}
+       {% for farm_option in farms %}
+       <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+         <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+           <div>
+             <div style="font-size:15px;font-weight:700;color:#2e7d32;">{{ farm_option.name }}</div>
+             <div style="font-size:12px;color:var(--text-light);margin-top:3px;">
+               {{ farm_option.location }} · {{ farm_option.crop_name or 'No crop selected' }} · {{ farm_option.area or '—' }} acres
+             </div>
+             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+               <span class="meta-chip">🗺️ {{ farm_option.zone_name or 'No zone' }}</span>
+               <span class="meta-chip">💧 {{ farm_option.irrigation_type or 'No irrigation type' }}</span>
+             </div>
+           </div>
+           <div style="display:flex;gap:8px;flex-wrap:wrap;">
+             {% if active_farm_id == farm_option.id %}
+             <span class="badge badge-green">Active</span>
+             {% else %}
+             <form method="POST" style="margin:0;">
+               <input type="hidden" name="action" value="set_active_farm">
+               <input type="hidden" name="farm_id" value="{{ farm_option.id }}">
+               <button type="submit" class="btn btn-outline btn-sm">Set Active</button>
+             </form>
+             {% endif %}
+             <a href="{{ url_for('farmer.profile', farm_id=farm_option.id, edit_farm_id=farm_option.id) }}"
+                class="btn btn-outline btn-sm">Edit</a>
+           </div>
+         </div>
+       </div>
+       {% endfor %}
+     {% else %}
+     <div class="empty-state">
+       <div class="empty-icon">🌾</div>
+       <p>You haven't created any farms yet.</p>
+     </div>
+     {% endif %}
+   </div>
+
+   <div class="card" style="background:var(--green-faint);border:1px solid var(--green-pale);">
+     <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:10px;">📌 Quick Tips</div>
+     <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;">
+       <li style="font-size:13px;color:var(--text-mid);">💧 Set crop moisture threshold for accurate recommendations</li>
+       <li style="font-size:13px;color:var(--text-mid);">📅 Add planting date to track growth stages</li>
+       <li style="font-size:13px;color:var(--text-mid);">🗺️ Select correct agro-zone for zone-specific advisories</li>
+     </ul>
+   </div>
+ </div>
+</div>
+
+<div class="modal-overlay" id="farmModal">
+ <div class="modal">
+   <div class="modal-header">
+     <div class="modal-title">{% if farm %}✏️ Edit Farm{% else %}➕ Create Farm{% endif %}</div>
+     <button class="modal-close" onclick="closeModal('farmModal')">✕</button>
+   </div>
+   <form method="POST">
+     <input type="hidden" name="action" value="{% if farm %}update_farm{% else %}create_farm{% endif %}">
+     {% if farm %}<input type="hidden" name="farm_id" value="{{ farm.id }}">{% endif %}
+     <div class="form-row">
+       <div class="form-group">
+         <label>Farm Name *</label>
+         <input type="text" name="farm_name" class="form-control"
+                value="{{ farm.name if farm else '' }}" required
+                minlength="2" maxlength="150"
+                title="Farm name must be at least 2 characters">
+       </div>
+       <div class="form-group">
+         <label>Location *</label>
+         <input type="text" name="location" class="form-control"
+                value="{{ farm.location if farm else '' }}"
+                placeholder="Village, District, State" required
+                minlength="3" maxlength="255"
+                title="Location is required for weather data — enter village, district or city">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Used for weather lookup — include one of the supported districts when possible</div>
+       </div>
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Area (acres)</label>
+         <input type="number" name="area" class="form-control"
+                step="0.1" min="0.1" max="100000"
+                value="{{ farm.area if farm else '' }}"
+                title="Enter a positive area value in acres">
+       </div>
+       <div class="form-group">
+         <label>Soil Type</label>
+         <select name="soil_type" class="form-control">
+           <option value="">Select soil type</option>
+           {% for s in ['Clay Loam', 'Black Cotton', 'Red Sandy', 'Laterite', 'Alluvial', 'Sandy Loam'] %}
+           <option value="{{ s }}" {% if farm and farm.soil_type == s %}selected{% endif %}>{{ s }}</option>
+           {% endfor %}
+         </select>
+       </div>
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Crop *</label>
+         <select name="crop_id" class="form-control" id="cropSelect" onchange="autoCropSuggest(this)">
+           <option value="">Select crop first</option>
+           {% for c in crops %}
+           <option value="{{ c.id }}"
+                   data-moisture="{{ c.moisture_threshold }}"
+                   data-name="{{ c.name|lower }}"
+                   {% if farm and farm.crop_id == c.id %}selected{% endif %}>
+             {{ c.name }}{% if c.variety %} ({{ c.variety }}){% endif %}
+           </option>
+           {% endfor %}
+         </select>
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Choose crop first — soil type & zone will be auto-suggested</div>
+       </div>
+       <div class="form-group">
+         <label>Agro Zone</label>
+         <select name="zone_id" class="form-control" id="zoneSelect">
+           <option value="">Select zone</option>
+           {% for z in zones %}
+           <option value="{{ z.id }}"
+                   data-climate="{{ z.climate|lower }}"
+                   data-soil="{{ z.soil_type|lower }}"
+                   data-name="{{ z.name|lower }}"
+                   {% if farm and farm.zone_id == z.id %}selected{% endif %}>
+             {{ z.name }} ({{ z.climate }})
+           </option>
+           {% endfor %}
+         </select>
+         <div id="zoneHint" style="font-size:12px;color:#2e7d32;margin-top:4px;display:none;"></div>
+       </div>
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Irrigation Type</label>
+         <select name="irrigation_type" class="form-control">
+           <option value="">Select type</option>
+           {% for t in ['Drip', 'Sprinkler', 'Furrow', 'Flood', 'Centre Pivot'] %}
+           <option value="{{ t }}" {% if farm and farm.irrigation_type == t %}selected{% endif %}>{{ t }}</option>
+           {% endfor %}
+         </select>
+       </div>
+       <div class="form-group">
+         <label>Planting Date</label>
+         <input type="date" name="planting_date" class="form-control"
+                value="{{ farm.planting_date if farm else '' }}"
+                max="{{ today_date }}"
+                title="Planting date cannot be in the future">
+       </div>
+     </div>
+     <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+       <button type="button" class="btn btn-outline" onclick="closeModal('farmModal')">Cancel</button>
+       <button type="submit" class="btn btn-primary">{% if farm %}Update Farm{% else %}Create Farm{% endif %}</button>
+     </div>
+   </form>
+ </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+ el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+{% if not farms or request.args.get('new_farm') %}
+window.addEventListener('DOMContentLoaded', () => setTimeout(() => openModal('farmModal'), 400));
+{% endif %}
+
+function fieldErr(inputEl, msg) {
+  let err = inputEl.parentElement.querySelector('.f-err');
+  if (!err) {
+    err = document.createElement('div');
+    err.className = 'f-err';
+    err.style.cssText = 'font-size:12px;color:#c62828;margin-top:4px;';
+    inputEl.parentElement.appendChild(err);
+  }
+  err.textContent = msg;
+  inputEl.style.borderColor = msg ? '#c62828' : '#66bb6a';
+}
+
+const userForm = document.querySelector('form input[name="action"][value="update_user"]');
+if (userForm) {
+  userForm.closest('form').addEventListener('submit', function(e) {
+    let ok = true;
+    const nameEl  = this.querySelector('input[name="name"]');
+    const phoneEl = this.querySelector('input[name="phone"]');
+    const name = nameEl.value.trim();
+
+    if (!name || name.length < 3) {
+      fieldErr(nameEl, 'Name must be at least 3 characters.'); ok = false;
+    } else if (!/^[A-Za-z\s]+$/.test(name)) {
+      fieldErr(nameEl, 'Name should contain only letters and spaces.'); ok = false;
+    } else fieldErr(nameEl, '');
+
+    if (phoneEl) {
+      const phone = phoneEl.value.trim().replace(/\D/g,'');
+      if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+        fieldErr(phoneEl, 'Enter a valid 10-digit Indian mobile number starting with 6–9.'); ok = false;
+      } else fieldErr(phoneEl, '');
+    }
+
+    if (!ok) e.preventDefault();
+  });
+}
+
+const farmFormAction = document.querySelector('input[name="action"][value="create_farm"], input[name="action"][value="update_farm"]');
+if (farmFormAction) {
+  farmFormAction.closest('form').addEventListener('submit', function(e) {
+    let ok = true;
+    const farmNameEl = this.querySelector('input[name="farm_name"]');
+    const locationEl = this.querySelector('input[name="location"]');
+    const areaEl = this.querySelector('input[name="area"]');
+    const plantDateEl = this.querySelector('input[name="planting_date"]');
+
+    const fn = farmNameEl.value.trim();
+    if (!fn || fn.length < 2) {
+      fieldErr(farmNameEl, 'Farm name must be at least 2 characters.'); ok = false;
+    } else fieldErr(farmNameEl, '');
+
+    const loc = locationEl.value.trim();
+    if (!loc) {
+      fieldErr(locationEl, 'Location is required for weather data.'); ok = false;
+    } else fieldErr(locationEl, '');
+
+    if (areaEl && areaEl.value) {
+      const area = parseFloat(areaEl.value);
+      if (isNaN(area) || area <= 0 || area > 100000) {
+        fieldErr(areaEl, 'Enter a valid area (0.1 – 100,000 acres).'); ok = false;
+      } else fieldErr(areaEl, '');
+    }
+
+    if (plantDateEl && plantDateEl.value) {
+      const d = new Date(plantDateEl.value);
+      const now = new Date();
+      const twoYearsAgo = new Date(); twoYearsAgo.setFullYear(now.getFullYear() - 2);
+      const oneYearAhead = new Date(); oneYearAhead.setFullYear(now.getFullYear() + 1);
+      if (d < twoYearsAgo) {
+        fieldErr(plantDateEl, 'Planting date seems too old (more than 2 years ago).'); ok = false;
+      } else if (d > oneYearAhead) {
+        fieldErr(plantDateEl, 'Planting date cannot be more than 1 year in the future.'); ok = false;
+      } else fieldErr(plantDateEl, '');
+    }
+
+    if (!ok) e.preventDefault();
+  });
+}
+
+document.querySelectorAll('input[name="phone"]').forEach(el => {
+  el.addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g,'').slice(0, 10);
+  });
+});
+
+const CROP_ZONE_KEYWORDS = {
+  'sugarcane': ['tropical','alluvial','monsoon'],
+  'rice':      ['deltaic','humid','lowland','flood','clay'],
+  'soybean':   ['semi-arid','black','vertisol','rainfed'],
+  'wheat':     ['alluvial','subtropical','loam'],
+  'cotton':    ['black','semi-arid','vertisol'],
+  'maize':     ['tropical','loam','alluvial'],
+};
+
+const CROP_SOIL_MAP = {
+  'sugarcane': 'Alluvial',
+  'rice':      'Clay Loam',
+  'soybean':   'Black Cotton',
+  'wheat':     'Alluvial',
+  'cotton':    'Black Cotton',
+  'maize':     'Sandy Loam',
+};
+
+function autoCropSuggest(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const cropName = (opt.dataset.name || '').toLowerCase();
+  const moisture = opt.dataset.moisture;
+  const soilSel = document.querySelector('select[name="soil_type"]');
+
+  if (soilSel) {
+    for (const [key, soil] of Object.entries(CROP_SOIL_MAP)) {
+      if (cropName.includes(key)) {
+        for (let i = 0; i < soilSel.options.length; i++) {
+          if (soilSel.options[i].value.toLowerCase().includes(soil.toLowerCase().split(' ')[0])) {
+            soilSel.selectedIndex = i;
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  const zoneSel = document.getElementById('zoneSelect');
+  const zoneHint = document.getElementById('zoneHint');
+  const suggestion = document.getElementById('cropSuggestion');
+
+  let keywords = [];
+  for (const [key, kws] of Object.entries(CROP_ZONE_KEYWORDS)) {
+    if (cropName.includes(key)) { keywords = kws; break; }
+  }
+
+  let bestZone = null;
+  let bestIdx = -1;
+  for (let i = 1; i < zoneSel.options.length; i++) {
+    const zoneOption = zoneSel.options[i];
+    const zoneText = ((zoneOption.dataset.climate || '') + ' ' + (zoneOption.dataset.soil || '') + ' ' + (zoneOption.dataset.name || '')).toLowerCase();
+    if (keywords.some(k => zoneText.includes(k))) {
+      bestZone = zoneOption.text;
+      bestIdx = i;
+      break;
+    }
+  }
+
+  if (bestIdx > 0 && zoneSel.selectedIndex <= 0) {
+    zoneSel.selectedIndex = bestIdx;
+    zoneHint.style.display = 'block';
+    zoneHint.textContent = `✅ Auto-suggested zone: ${bestZone}`;
+  } else {
+    zoneHint.style.display = 'none';
+  }
+
+  if (opt.value && moisture) {
+    suggestion.style.display = 'block';
+    suggestion.innerHTML = `🌱 <strong>${opt.text}</strong> — Moisture threshold: <strong>${moisture}%</strong>. ${bestZone ? 'Recommended zone: <strong>' + bestZone + '</strong>.' : ''} You can change these before saving.`;
+  } else {
+    suggestion.style.display = 'none';
+  }
+}
+
+window.addEventListener('load', () => {
+  const sel = document.getElementById('cropSelect');
+  if (sel && sel.value) autoCropSuggest(sel);
+});
+</script>
+{% endblock %}

@@ -1,1 +1,136 @@
-adviso
+{% extends 'base.html' %}
+{% block title %}Advisories{% endblock %}
+{% block page_title %}Expert Advisories{% endblock %}
+{% block page_subtitle %}Guidance from agronomists for better crop management{% endblock %}
+{% block content %}
+{% if farms|length > 1 %}
+<div class="card" style="margin-bottom:24px;padding:16px 20px;">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+   <div>
+     <div class="card-title" style="font-size:15px;">Active Farm</div>
+     <div class="card-subtitle">Advisories are shared platform-wide; this keeps your farm context handy</div>
+   </div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+     {% for farm_option in farms %}
+     <a href="{{ url_for('farmer.advisories', farm_id=farm_option.id) }}"
+        class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+       {{ farm_option.name }}
+     </a>
+     {% endfor %}
+   </div>
+ </div>
+</div>
+{% endif %}
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+ <button class="btn btn-primary btn-sm filter-btn active" data-filter="all">All</button>
+ <button class="btn btn-outline btn-sm filter-btn" data-filter="irrigation">💧 Irrigation</button>
+ <button class="btn btn-outline btn-sm filter-btn" data-filter="pest">🐛 Pest</button>
+ <button class="btn btn-outline btn-sm filter-btn" data-filter="soil">🪨 Soil</button>
+ <button class="btn btn-outline btn-sm filter-btn" data-filter="disease">🦠 Disease</button>
+ <button class="btn btn-outline btn-sm filter-btn" data-filter="crop">🌱 Crop</button>
+</div>
+
+{% if advisories %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;" id="advisories-grid">
+ {% for adv in advisories %}
+ <div class="advisory-card" data-type="{{ adv.advisory_type }}">
+   <div class="advisory-card-header">
+     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+       <span class="advisory-tag" style="
+         background:{% if adv.advisory_type == 'irrigation' %}var(--blue-pale){% elif adv.advisory_type == 'pest' %}var(--orange-pale){% elif adv.advisory_type == 'disease' %}var(--red-pale){% elif adv.advisory_type == 'soil' %}var(--yellow-pale){% else %}var(--green-faint){% endif %};
+         color:{% if adv.advisory_type == 'irrigation' %}var(--blue){% elif adv.advisory_type == 'pest' %}var(--orange){% elif adv.advisory_type == 'disease' %}var(--red){% elif adv.advisory_type == 'soil' %}#6D4C00{% else %}var(--green-primary){% endif %};">
+         {% if adv.advisory_type == 'irrigation' %}💧{% elif adv.advisory_type == 'pest' %}🐛{% elif adv.advisory_type == 'disease' %}🦠{% elif adv.advisory_type == 'soil' %}🪨{% else %}🌱{% endif %}
+         {{ adv.advisory_type|title }}
+       </span>
+       <span style="font-size:12px;color:var(--text-light);">{{ adv.created_at.strftime('%Y-%m-%d') }}</span>
+     </div>
+     <h3 style="font-size:16px;font-weight:700;color:var(--text);">{{ adv.title }}</h3>
+   </div>
+   <div class="advisory-card-body">
+     <p style="font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:14px;">
+       {{ adv.content[:200] }}{% if adv.content|length > 200 %}...{% endif %}
+     </p>
+     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+       {% if adv.crop_name %}<span class="meta-chip">🌱 {{ adv.crop_name }}</span>{% endif %}
+       {% if adv.zone_name %}<span class="meta-chip">🗺️ {{ adv.zone_name }}</span>{% endif %}
+     </div>
+     <div style="display:flex;align-items:center;justify-content:space-between;">
+       <div style="display:flex;align-items:center;gap:8px;">
+         <div style="width:30px;height:30px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--green-dark);">
+           {{ adv.operator_name[0]|upper }}
+         </div>
+         <span style="font-size:12px;color:var(--text-light);">{{ adv.operator_name }}</span>
+       </div>
+       <button class="btn btn-sm btn-outline" onclick="openAdvisory(this)"
+         data-title="{{ adv.title }}"
+         data-content="{{ adv.content }}"
+         data-author="{{ adv.operator_name }}"
+         data-date="{{ adv.created_at.strftime('%Y-%m-%d') }}"
+         data-type="{{ adv.advisory_type }}"
+         data-crop="{{ adv.crop_name or 'General' }}"
+         data-zone="{{ adv.zone_name or 'All Zones' }}">
+         Read More
+       </button>
+     </div>
+   </div>
+ </div>
+ {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+ <div class="empty-icon">📋</div>
+ <p>No advisories published yet. Check back soon!</p>
+</div>
+{% endif %}
+
+<!-- ADVISORY DETAIL MODAL -->
+<div class="modal-overlay" id="advisoryModal">
+ <div class="modal" style="max-width:640px;">
+   <div class="modal-header">
+     <div class="modal-title" id="modal-adv-title">Advisory</div>
+     <button class="modal-close" onclick="closeModal('advisoryModal')">✕</button>
+   </div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="modal-adv-tags"></div>
+   <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px;font-size:14px;line-height:1.8;color:var(--text-mid);margin-bottom:16px;" id="modal-adv-content"></div>
+   <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border);">
+     <div style="font-size:13px;color:var(--text-light);" id="modal-adv-meta"></div>
+     <button class="btn btn-outline" onclick="closeModal('advisoryModal')">Close</button>
+   </div>
+ </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+ el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+
+function openAdvisory(btn) {
+ document.getElementById('modal-adv-title').textContent = btn.dataset.title;
+ document.getElementById('modal-adv-content').textContent = btn.dataset.content;
+ document.getElementById('modal-adv-meta').textContent = `By ${btn.dataset.author} · ${btn.dataset.date}`;
+ document.getElementById('modal-adv-tags').innerHTML = `
+   <span class="badge badge-green">${btn.dataset.type}</span>
+   <span class="badge badge-blue">🌱 ${btn.dataset.crop}</span>
+   <span class="badge badge-gray">🗺️ ${btn.dataset.zone}</span>
+ `;
+ openModal('advisoryModal');
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+ btn.addEventListener('click', function() {
+   document.querySelectorAll('.filter-btn').forEach(b => {
+     b.classList.remove('btn-primary'); b.classList.add('btn-outline');
+   });
+   this.classList.add('btn-primary'); this.classList.remove('btn-outline');
+   const filter = this.dataset.filter;
+   document.querySelectorAll('.advisory-card').forEach(card => {
+     card.style.display = (filter === 'all' || card.dataset.type === filter) ? 'block' : 'none';
+   });
+ });
+});
+</script>
+{% endblock %}

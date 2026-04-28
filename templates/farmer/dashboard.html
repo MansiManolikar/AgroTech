@@ -1,1 +1,286 @@
-dash
+{% extends 'base.html' %}
+{% block title %}Farmer Dashboard{% endblock %}
+{% block page_title %}Farm Dashboard{% endblock %}
+{% block page_subtitle %}
+  {% if farm %}{{ farm.name }} — {{ farm.crop_name or 'No crop set' }}{% else %}Welcome, set up your farm profile{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if not farm %}
+<div style="text-align:center;padding:60px 24px;">
+  <div style="font-size:60px;margin-bottom:20px;">🌾</div>
+  <h2 style="margin-bottom:10px;">Set Up Your Farm</h2>
+  <p style="color:var(--text-light);margin-bottom:24px;">You haven't created a farm profile yet.</p>
+  <a href="{{ url_for('farmer.profile') }}" class="btn btn-primary" style="font-size:15px;padding:13px 28px;">Create Farm Profile →</a>
+</div>
+{% else %}
+
+{% if farms|length > 1 %}
+<div class="card" style="margin-bottom:24px;padding:16px 20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div class="card-title" style="font-size:15px;">Your Farms</div>
+      <div class="card-subtitle">Switch the active farm for dashboard insights</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {% for farm_option in farms %}
+      <a href="{{ url_for('farmer.dashboard', farm_id=farm_option.id) }}"
+         class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        {{ farm_option.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Soil modal -->
+<div id="soilModalDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+     z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:360px;max-width:90vw;">
+    <h3 style="margin:0 0 16px;">💧 Log Soil Moisture</h3>
+    <form method="POST" action="{{ url_for('farmer.log_soil') }}">
+      <input type="hidden" name="farm_id" value="{{ farm.id }}">
+      <input type="hidden" name="next" value="{{ url_for('farmer.dashboard', farm_id=farm.id) }}">
+      <div class="form-group">
+        <label>Soil Moisture (%)</label>
+        <input type="number" name="soil_moisture" class="form-control"
+               min="0" max="100" step="0.1" placeholder="e.g. 42.5" required autofocus
+               title="Enter soil moisture between 0% and 100%">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="document.getElementById('soilModalDash').style.display='none'"
+                class="btn btn-outline" style="flex:1;justify-content:center;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!--RECOMMENDATION BANNER -->
+{% if rec %}
+<div style="background:{{ rec.color }}12;border:2px solid {{ rec.color }};border-radius:14px;
+            padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+  <div style="width:52px;height:52px;border-radius:12px;background:{{ rec.color }};
+              display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+    {{ rec.icon }}
+  </div>
+  <div style="flex:1;min-width:180px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:{{ rec.color }};">{{ rec.priority|upper }}</div>
+    <div style="font-size:18px;font-weight:700;color:{{ rec.color }};">{{ rec.action }}</div>
+    <div style="font-size:13px;color:#555;">{{ rec.reason }}</div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button onclick="document.getElementById('soilModalDash').style.display='flex'"
+            class="btn btn-outline" style="font-size:13px;">💧 Log Moisture</button>
+    <a href="{{ url_for('farmer.recommendation', farm_id=farm.id) }}" class="btn btn-primary" style="font-size:13px;">
+      🤖 Full Analysis →
+    </a>
+  </div>
+</div>
+{% else %}
+<div style="background:#f5f5f5;border:1px dashed #ccc;border-radius:14px;padding:18px 24px;
+            margin-bottom:24px;display:flex;align-items:center;gap:16px;">
+  <span style="font-size:30px;">💧</span>
+  <div style="flex:1;">
+    <div style="font-weight:600;">Log your soil moisture to get smart recommendations</div>
+    <div style="font-size:13px;color:#888;">Takes 10 seconds — drives irrigation, harvest & disease advice.</div>
+  </div>
+  <button onclick="document.getElementById('soilModalDash').style.display='flex'"
+          class="btn btn-primary" style="font-size:13px;">Log Now</button>
+</div>
+{% endif %}
+<div class="stat-grid">
+  <div class="stat-card animate-fade-up">
+    <div class="stat-icon">💧</div>
+    <div class="stat-value">{{ soil_reading.soil_moisture if soil_reading else '--' }}%</div>
+    <div class="stat-label">Soil Moisture</div>
+    <span class="stat-badge {% if soil_reading and soil_reading.soil_moisture > 50 %}up{% else %}down{% endif %}">
+      {% if soil_reading and soil_reading.soil_moisture > 50 %}Optimal{% elif soil_reading %}Low{% else %}No Data{% endif %}
+    </span>
+  </div>
+  <div class="stat-card yellow animate-fade-up">
+    <div class="stat-icon">🌡️</div>
+    <div class="stat-value">{{ weather.temp if weather else '--' }}°C</div>
+    <div class="stat-label">Temperature</div>
+    <span class="stat-badge up">{{ weather.condition if weather else 'N/A' }}</span>
+  </div>
+  <div class="stat-card blue animate-fade-up">
+    <div class="stat-icon">💦</div>
+    <div class="stat-value">{{ weather.humidity if weather else '--' }}%</div>
+    <div class="stat-label">Humidity</div>
+    <span class="stat-badge up">Relative</span>
+  </div>
+  <div class="stat-card red animate-fade-up">
+    <div class="stat-icon">🌧️</div>
+    <div class="stat-value">{{ weather.rainfall_mm if weather else '0' }}mm</div>
+    <div class="stat-label">Rainfall Today</div>
+    <span class="stat-badge {% if weather and weather.rainfall_mm > 0 %}up{% else %}down{% endif %}">
+      {% if weather and weather.rainfall_mm > 0 %}Active{% else %}No Rain{% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- CROP STAGE PROGRESS BAR -->
+{% if rec and rec.stage %}
+<div class="card" style="margin-bottom:24px;padding:18px 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <span style="font-size:14px;font-weight:700;color:#2e7d32;">🌱 Crop Stage: {{ rec.stage.name }}</span>
+      <span style="font-size:12px;color:#888;margin-left:12px;">{{ rec.stage.days_elapsed }} days elapsed · {{ rec.stage.days_remaining }} days to harvest</span>
+    </div>
+    <span style="font-size:13px;font-weight:700;color:#2e7d32;">{{ rec.stage.progress_pct }}%</span>
+  </div>
+  <div style="background:#e8f5e9;border-radius:99px;height:10px;">
+    <div style="background:linear-gradient(90deg,#2e7d32,#66bb6a);width:{{ rec.stage.progress_pct }}%;height:10px;border-radius:99px;transition:width 1s;"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:4px;">
+    <span>Germination</span><span>Vegetative</span><span>Flowering</span><span>Harvest</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- MOISTURE TREND + WEATHER -->
+<div class="grid-2" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">💧 Soil Moisture Trend</div>
+        <div class="card-subtitle">Your logged readings over time</div>
+      </div>
+      <button onclick="document.getElementById('soilModalDash').style.display='flex'"
+              class="btn btn-sm btn-outline">+ Log</button>
+    </div>
+    <div class="chart-container" style="height:220px;">
+      <canvas id="moistureChart"></canvas>
+    </div>
+  </div>
+
+  <div class="weather-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-size:13px;opacity:0.7;margin-bottom:4px;">Current Weather</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px;">{{ farm.location or 'Your Farm' }}</div>
+        <div class="weather-temp">{{ weather.temp if weather else '--' }}°C</div>
+        <div style="font-size:15px;opacity:0.8;margin-top:6px;">{{ weather.condition if weather else 'Unknown' }}</div>
+      </div>
+      <div class="weather-icon">
+        {% if weather and 'Rain' in (weather.condition or '') %}🌧️
+        {% elif weather and 'Cloud' in (weather.condition or '') %}⛅
+        {% else %}☀️{% endif %}
+      </div>
+    </div>
+    <div class="weather-meta">
+      <div class="weather-meta-item">💨 {{ weather.wind_kph if weather else '--' }} km/h</div>
+      <div class="weather-meta-item">💧 {{ weather.humidity if weather else '--' }}%</div>
+      <div class="weather-meta-item">🌧️ {{ weather.rainfall_mm if weather else '0' }}mm</div>
+    </div>
+    <div style="margin-top:20px;">
+      <div style="font-size:12px;opacity:0.6;margin-bottom:10px;font-weight:600;letter-spacing:1px;">RECENT DAYS</div>
+      {% for w in weather_history[:4] %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
+        <span style="font-size:13px;opacity:0.8;">{{ w.fetched_at.strftime('%b %d') if w.fetched_at else '—' }}</span>
+        <span style="font-size:13px;">{{ w.condition or '—' }}</span>
+        <span style="font-weight:600;">{{ '%.0f'|format(w.temp) if w.temp else '--' }}°C</span>
+      </div>
+      {% else %}
+      <div style="font-size:13px;opacity:0.5;padding:8px 0;">No weather history yet</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE + ADVISORIES -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">💧 Irrigation Schedule</div>
+      <a href="{{ url_for('farmer.schedule', farm_id=farm.id) }}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    {% if irrigation_schedules %}
+      {% for s in irrigation_schedules %}
+      <div class="schedule-item">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="schedule-dot" style="background:{% if s.status == 'done' %}var(--green-light){% elif s.status == 'progressing' %}var(--yellow){% else %}var(--text-light){% endif %};"></div>
+          <div>
+            <div style="font-size:14px;font-weight:600;">{{ s.scheduled_date }}</div>
+            <div style="font-size:12px;color:var(--text-light);">{{ s.scheduled_time.strftime('%I:%M %p') if s.scheduled_time else '—' }} · {{ s.duration_minutes }} min · {{ s.water_amount }}L</div>
+          </div>
+        </div>
+        <span class="badge {% if s.status == 'done' %}badge-green{% elif s.status == 'progressing' %}badge-yellow{% else %}badge-gray{% endif %}">
+          {{ s.status|title }}
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state"><div class="empty-icon">📅</div><p>No schedules yet</p></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Latest Advisories</div>
+      <a href="{{ url_for('farmer.advisories', farm_id=farm.id) }}" class="btn btn-sm btn-outline">All</a>
+    </div>
+    {% for adv in advisories %}
+    <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span class="advisory-tag" style="background:var(--green-faint);color:var(--green-dark);margin-top:2px;">{{ adv.advisory_type|title }}</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;">{{ adv.title }}</div>
+          <div style="font-size:12px;color:var(--text-light);margin-top:2px;">By {{ adv.operator_name }} · {{ adv.created_at.strftime('%d %b %Y') }}</div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">📋</div><p>No advisories yet</p></div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const soilModalDash = document.getElementById('soilModalDash');
+if (soilModalDash) {
+  soilModalDash.addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+}
+</script>
+<script>
+const moistureChartEl = document.getElementById('moistureChart');
+if (moistureChartEl) {
+  const moistureData = {{ moisture_data|safe }};
+  const labels = moistureData.map(d => d.date);
+  const moistureValues = moistureData.map(d => d.moisture);
+
+  new Chart(moistureChartEl, {
+    type: 'line',
+    data: {
+      labels: labels.length ? labels : ['No data'],
+      datasets: [{
+        label: 'Soil Moisture %',
+        data: moistureValues.length ? moistureValues : [0],
+        borderColor: '#4CAF50',
+        backgroundColor: 'rgba(76,175,80,0.12)',
+        borderWidth: 2.5, tension: 0.4, fill: true,
+        pointBackgroundColor: '#4CAF50', pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: false, min: 0, max: 100,
+             ticks: { callback: v => v + '%', font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 7 } }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,1 +1,128 @@
-login
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Login | AgriTech Portal</title>
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="flash-container">
+   {% for category, message in messages %}
+   <div class="flash {{ category }}">{{ message }}</div>
+   {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+
+ <div class="auth-page">
+   <div class="auth-left">
+     <div style="margin-bottom:48px;">
+       <a href="{{ url_for('main.index') }}" style="color:rgba(255,255,255,0.7);font-size:14px;display:flex;align-items:center;gap:8px;">← Back to Home</a>
+     </div>
+     <div class="hero-tag" style="margin-bottom:20px;">🌾 Smart Agriculture</div>
+     <h2>Welcome Back to AgriTech Portal</h2>
+     <p>Monitor your crops, schedule irrigation, and get expert advisories — all in one place.</p>
+     <div class="auth-feature-list">
+       <div class="auth-feature"><div class="auth-feature-icon">💧</div><span>Real-time soil moisture monitoring</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">🌦️</div><span>Weather-based irrigation scheduling</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">📋</div><span>Expert agronomist advisories</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">🔔</div><span>Smart threshold-based alerts</span></div>
+     </div>
+     <div style="margin-top:48px;padding:20px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.1);">
+       <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:10px;font-weight:600;">DEMO CREDENTIALS</div>
+       <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-bottom:6px;">🧑‍💼 Operator: admin@agritech.com / Admin@123</div>
+       <div style="font-size:13px;color:rgba(255,255,255,0.8);">👨‍🌾 Farmer: suresh@farm.com / farmer123</div>
+     </div>
+   </div>
+
+   <div class="auth-right">
+     <div class="auth-box">
+       <div style="margin-bottom:32px;"><span style="font-size:36px;">🌱</span></div>
+       <h3>Sign In</h3>
+       <p>Enter your credentials to access the portal</p>
+
+       <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm" novalidate>
+
+         <!-- Email -->
+         <div class="form-group">
+           <label>Email Address</label>
+           <input type="email" name="email" id="login_email" class="form-control"
+                  placeholder="you@example.com" required maxlength="150"
+                  title="Enter a valid email address" autofocus>
+           <div class="field-error" id="err_login_email"></div>
+         </div>
+
+         <!-- Password -->
+         <div class="form-group">
+           <label>Password</label>
+           <div style="position:relative;">
+             <input type="password" name="password" id="login_password" class="form-control"
+                    placeholder="Your password" required minlength="6" maxlength="64"
+                    title="Password is required" style="padding-right:40px;">
+             <span onclick="togglePw('login_password',this)"
+                   style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁️</span>
+           </div>
+           <div style="text-align:right;margin-top:6px;">
+             <a href="{{ url_for('auth.forgot_password') }}" class="auth-link" style="font-size:13px;">Forgot password?</a>
+           </div>
+           <div class="field-error" id="err_login_password"></div>
+         </div>
+
+         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px;">
+           Login to Dashboard →
+         </button>
+       </form>
+
+       <div class="auth-divider">or</div>
+       <p style="text-align:center;font-size:14px;color:var(--text-light);">
+         Don't have an account? <a href="{{ url_for('auth.register') }}" class="auth-link">Register as Farmer</a>
+       </p>
+     </div>
+   </div>
+ </div>
+
+<style>
+.field-error { font-size:12px;color:#c62828;margin-top:5px;min-height:16px; }
+.form-control.invalid { border-color:#c62828 !important; }
+</style>
+
+<script>
+function togglePw(id, icon) {
+  const f = document.getElementById(id);
+  f.type = f.type === 'password' ? 'text' : 'password';
+  icon.textContent = f.type === 'password' ? '👁️' : '🙈';
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  let valid = true;
+  const email = document.getElementById('login_email').value.trim();
+  const pw    = document.getElementById('login_password').value;
+
+  const emailEl = document.getElementById('err_login_email');
+  const pwEl    = document.getElementById('err_login_password');
+  emailEl.textContent = '';
+  pwEl.textContent    = '';
+  if (!email) {
+    emailEl.textContent = 'Email address is required.';
+    document.getElementById('login_email').classList.add('invalid');
+    valid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    emailEl.textContent = 'Enter a valid email address.';
+    document.getElementById('login_email').classList.add('invalid');
+    valid = false;
+  }
+
+  if (!pw) {
+    pwEl.textContent = 'Password is required.';
+    document.getElementById('login_password').classList.add('invalid');
+    valid = false;
+  }
+
+  if (!valid) e.preventDefault();
+});
+</script>
+</body>
+</html>

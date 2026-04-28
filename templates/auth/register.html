@@ -1,1 +1,224 @@
-register
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Register | AgriTech Portal</title>
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="flash-container">
+   {% for category, message in messages %}
+   <div class="flash {{ category }}">{{ message }}</div>
+   {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+
+ <div class="auth-page">
+   <div class="auth-left">
+     <div style="margin-bottom:48px;">
+       <a href="{{ url_for('main.index') }}" style="color:rgba(255,255,255,0.7);font-size:14px;display:flex;align-items:center;gap:8px;">← Back to Home</a>
+     </div>
+     <div class="hero-tag" style="margin-bottom:20px;">🌿 Join AgriTech</div>
+     <h2>Start Your Smart Farming Journey</h2>
+     <p>Register today and gain access to precision irrigation, crop monitoring, and expert advisories.</p>
+     <div class="auth-feature-list" style="margin-top:32px;">
+       <div class="auth-feature"><div class="auth-feature-icon">🆓</div><span>Free to register, no credit card needed</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">📱</div><span>Access from any device, anywhere</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">🔒</div><span>Your data is secure and private</span></div>
+       <div class="auth-feature"><div class="auth-feature-icon">🌾</div><span>Support for 50+ crop varieties</span></div>
+     </div>
+   </div>
+
+   <div class="auth-right">
+     <div class="auth-box">
+       <div style="margin-bottom:32px;"><span style="font-size:36px;">👨‍🌾</span></div>
+       <h3>Create Account</h3>
+       <p>Register as a farmer to get started</p>
+
+       <form method="POST" action="{{ url_for('auth.register') }}" id="registerForm" novalidate>
+
+         <!-- Full Name -->
+         <div class="form-group">
+           <label>Full Name *</label>
+           <input type="text" name="name" id="reg_name" class="form-control"
+                  placeholder="Your full name" required
+                  minlength="3" maxlength="100"
+                  pattern="[A-Za-z\s]+"
+                  title="Name should contain only letters and spaces">
+           <div class="field-error" id="err_name"></div>
+         </div>
+
+         <!-- Email -->
+         <div class="form-group">
+           <label>Email Address *</label>
+           <input type="email" name="email" id="reg_email" class="form-control"
+                  placeholder="you@example.com" required maxlength="150">
+           <div class="field-error" id="err_email"></div>
+         </div>
+
+         <!-- Phone -->
+         <div class="form-group">
+           <label>Phone Number *</label>
+           <input type="tel" name="phone" id="reg_phone" class="form-control"
+                  placeholder="e.g. 9876543210" required
+                  maxlength="10" inputmode="numeric">
+           <div style="font-size:11px;color:var(--text-light);margin-top:4px;">10 digits, must start with 6, 7, 8, or 9</div>
+           <div class="field-error" id="err_phone"></div>
+         </div>
+
+         <!-- Password -->
+         <div class="form-group">
+           <label>Password *</label>
+           <div style="position:relative;">
+             <input type="password" name="password" id="reg_password" class="form-control"
+                    placeholder="Min. 6 characters" required minlength="6" maxlength="64"
+                    style="padding-right:40px;">
+             <span onclick="togglePw('reg_password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁️</span>
+           </div>
+           <!-- Strength bar -->
+           <div style="background:#eee;border-radius:99px;height:4px;margin-top:8px;overflow:hidden;">
+             <div id="reg_strength_bar" style="height:100%;width:0;border-radius:99px;transition:width 0.3s,background 0.3s;"></div>
+           </div>
+           <div id="reg_strength_label" style="font-size:11px;color:#aaa;margin-top:4px;">Enter a password</div>
+           <div class="field-error" id="err_password"></div>
+         </div>
+
+         <!-- Confirm Password -->
+         <div class="form-group">
+           <label>Confirm Password *</label>
+           <div style="position:relative;">
+             <input type="password" name="confirm_password" id="reg_confirm" class="form-control"
+                    placeholder="Repeat password" required style="padding-right:40px;">
+             <span onclick="togglePw('reg_confirm',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none;">👁️</span>
+           </div>
+           <div class="field-error" id="err_confirm"></div>
+         </div>
+
+         <div style="background:var(--green-faint);border-radius:10px;padding:12px;margin-bottom:18px;font-size:13px;color:var(--green-dark);">
+           ✅ You will be registered as a <strong>Farmer</strong>. Operator accounts are assigned by administrators.
+         </div>
+
+         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px;">
+           Create My Account →
+         </button>
+       </form>
+
+       <div class="auth-divider">or</div>
+       <p style="text-align:center;font-size:14px;color:var(--text-light);">
+         Already have an account? <a href="{{ url_for('auth.login') }}" class="auth-link">Login here</a>
+       </p>
+     </div>
+   </div>
+ </div>
+
+<style>
+.field-error { font-size:12px;color:#c62828;margin-top:5px;min-height:16px; }
+.form-control.invalid { border-color:#c62828 !important; }
+.form-control.valid   { border-color:#2e7d32 !important; }
+</style>
+
+<script>
+function togglePw(id, icon) {
+  const f = document.getElementById(id);
+  f.type = f.type === 'password' ? 'text' : 'password';
+  icon.textContent = f.type === 'password' ? '👁️' : '🙈';
+}
+
+function setError(id, msg) {
+  const el = document.getElementById('err_' + id);
+  if (el) el.textContent = msg;
+  const inp = document.getElementById('reg_' + id);
+  if (inp) { inp.classList.toggle('invalid', !!msg); inp.classList.toggle('valid', !msg && inp.value.length > 0); }
+}
+
+document.getElementById('reg_name').addEventListener('blur', function() {
+  const v = this.value.trim();
+  if (!v) return setError('name', 'Full name is required.');
+  if (v.length < 3) return setError('name', 'Name must be at least 3 characters.');
+  if (!/^[A-Za-z\s]+$/.test(v)) return setError('name', 'Name should contain only letters and spaces.');
+  setError('name', '');
+});
+
+// ── Email ────────────────────────────────────────────────────────────────────
+document.getElementById('reg_email').addEventListener('blur', function() {
+  const v = this.value.trim();
+  if (!v) return setError('email', 'Email address is required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return setError('email', 'Enter a valid email address.');
+  setError('email', '');
+});
+
+document.getElementById('reg_phone').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g, '').slice(0, 10);
+});
+document.getElementById('reg_phone').addEventListener('blur', function() {
+  const v = this.value.trim();
+  if (!v) return setError('phone', 'Phone number is required.');
+  if (!/^[6-9]\d{9}$/.test(v)) return setError('phone', 'Enter a valid 10-digit Indian mobile number starting with 6–9.');
+  setError('phone', '');
+});
+
+function getStrength(p) {
+  let s = 0;
+  if (p.length >= 6)  s++;
+  if (p.length >= 10) s++;
+  if (/[A-Z]/.test(p)) s++;
+  if (/[0-9]/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return s;
+}
+document.getElementById('reg_password').addEventListener('input', function() {
+  const s = getStrength(this.value);
+  const pct    = [0,20,40,60,80,100][s];
+  const colors = ['#eee','#ef5350','#ffa726','#ffee58','#66bb6a','#2e7d32'];
+  const labels = ['','Too weak','Weak','Fair','Good','Strong'];
+  document.getElementById('reg_strength_bar').style.width = pct + '%';
+  document.getElementById('reg_strength_bar').style.background = colors[s];
+  document.getElementById('reg_strength_label').textContent = this.value ? labels[s] : 'Enter a password';
+  document.getElementById('reg_strength_label').style.color = colors[s];
+  if (this.value.length > 0 && this.value.length < 6) setError('password', 'Password must be at least 6 characters.');
+  else setError('password', '');
+});
+
+document.getElementById('reg_confirm').addEventListener('input', function() {
+  const pw = document.getElementById('reg_password').value;
+  if (this.value && this.value !== pw) setError('confirm', 'Passwords do not match.');
+  else setError('confirm', '');
+});
+
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+  let valid = true;
+  const name  = document.getElementById('reg_name').value.trim();
+  const email = document.getElementById('reg_email').value.trim();
+  const phone = document.getElementById('reg_phone').value.trim();
+  const pw    = document.getElementById('reg_password').value;
+  const conf  = document.getElementById('reg_confirm').value;
+
+  if (!name || name.length < 3 || !/^[A-Za-z\s]+$/.test(name)) {
+    setError('name', 'Enter a valid full name (letters only, min 3 chars).');
+    valid = false;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setError('email', 'Enter a valid email address.');
+    valid = false;
+  }
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    setError('phone', 'Enter a valid 10-digit mobile number starting with 6–9.');
+    valid = false;
+  }
+  if (!pw || pw.length < 6) {
+    setError('password', 'Password must be at least 6 characters.');
+    valid = false;
+  }
+  if (pw !== conf) {
+    setError('confirm', 'Passwords do not match.');
+    valid = false;
+  }
+  if (!valid) e.preventDefault();
+});
+</script>
+</body>
+</html>
