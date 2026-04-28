@@ -1,11 +1,1 @@
-flask 
-flask-login
-flask-mysqldb
-pymongo
-bcrypt
-python-dotenv
-itsdangerous
-requests
-jinja2
-pymysql
-mysqlclient
+req
