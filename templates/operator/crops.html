@@ -1,1 +1,196 @@
-crops
+{% extends 'base.html' %}
+{% block title %}Crop Management{% endblock %}
+{% block page_title %}Crop Management{% endblock %}
+{% block page_subtitle %}Define crop varieties, water requirements, and growth stages{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+ <button class="btn btn-primary" onclick="openModal('cropModal')">➕ Add New Crop</button>
+</div>
+
+<!-- CROPS GRID -->
+{% if crops %}
+<div class="ops-grid">
+ {% for c in crops %}
+ <div class="crop-card">
+   <div style="background:linear-gradient(135deg,#1B5E20,#4CAF50);padding:16px 20px;display:flex;align-items:center;gap:14px;">
+     <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:26px;">🌱</div>
+     <div>
+       <div style="color:#fff;font-weight:700;font-size:16px;">{{ c.name }}</div>
+       <div style="color:rgba(255,255,255,0.7);font-size:13px;">{{ c.variety or 'Standard' }}</div>
+     </div>
+     <div style="margin-left:auto;">
+       <span style="background:rgba(255,193,7,0.3);color:var(--yellow);font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;">
+         {{ c.farm_count }} farm{{ 's' if c.farm_count != 1 }}
+       </span>
+     </div>
+   </div>
+
+   <div class="crop-card-body">
+     <p style="font-size:13px;color:var(--text-mid);margin-bottom:12px;line-height:1.6;">{{ c.description or 'No description.' }}</p>
+     <!-- Growth Stages -->
+
+     {% if c.stages %}
+     <div style="margin-bottom:14px;">
+       <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Growth Stages</div>
+       <div style="display:flex;gap:6px;flex-wrap:wrap;">
+         {% for stage in c.stages.split(',') %}
+         <span class="meta-chip" style="font-size:11px;">{{ loop.index }}. {{ stage.strip() }}</span>
+         {% endfor %}
+       </div>
+     </div>
+     {% endif %}
+
+     <div class="crop-card-meta">
+       <span class="meta-chip">💧 {{ c.water_requirement }}mm/season</span>
+       <span class="meta-chip">🎯 {{ c.moisture_threshold }}% threshold</span>
+       <span class="meta-chip">📅 {{ c.growth_duration }} days</span>
+     </div>
+   </div>
+   <div class="crop-card-footer">
+     <div style="display:flex;align-items:center;gap:8px;">
+       <div style="width:80px;">
+         <div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">Water Need</div>
+         <div class="progress-bar">
+           <div class="progress-fill" style="width:{{ [c.water_requirement / 20, 100]|min }}%;"></div>
+         </div>
+       </div>
+     </div>
+
+     <form method="POST" onsubmit="return confirm('Delete this crop?')">
+       <input type="hidden" name="action" value="delete">
+       <input type="hidden" name="crop_id" value="{{ c.id }}">
+       <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+     </form>
+   </div>
+ </div>
+ {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+ <div class="empty-icon">🌱</div>
+ <p>No crops defined yet. Add your first crop!</p>
+</div>
+{% endif %}
+
+<!-- ADD CROP MODAL -->
+<div class="modal-overlay" id="cropModal">
+ <div class="modal" style="max-width:620px;">
+   <div class="modal-header">
+     <div class="modal-title">🌱 Add New Crop</div>
+     <button class="modal-close" onclick="closeModal('cropModal')">✕</button>
+   </div>
+   <form method="POST">
+     <input type="hidden" name="action" value="create">
+     <div class="form-row">
+       <div class="form-group">
+         <label>Crop Name *</label>
+         <input type="text" name="name" class="form-control" placeholder="e.g., Rice" required
+                minlength="2" maxlength="100" pattern="[A-Za-z\s\-]+"
+                title="Crop name: letters, spaces or hyphens only (min 2 chars)">
+       </div>
+       <div class="form-group">
+         <label>Variety</label>
+         <input type="text" name="variety" class="form-control" placeholder="e.g., IR-64, Bt Cotton"
+                maxlength="100" title="Optional crop variety or sub-type">
+       </div>
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Growth Duration (days) *</label>
+         <input type="number" name="growth_duration" class="form-control" placeholder="e.g., 120" required
+                min="20" max="730" title="Growth duration: 20–730 days">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 20 – 730 days</div>
+       </div>
+       <div class="form-group">
+         <label>Water Requirement (mm/season) *</label>
+         <input type="number" name="water_requirement" class="form-control" placeholder="e.g., 1200" required
+                min="50" max="5000" title="Water requirement: 50–5,000 mm/season">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 50 – 5,000 mm</div>
+       </div>
+     </div>
+     <div class="form-group">
+       <label>Moisture Threshold (%) *</label>
+       <input type="number" name="moisture_threshold" class="form-control" placeholder="e.g., 35" required
+              min="10" max="90" step="1" title="Moisture threshold: 10%–90%">
+       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Soil moisture % below which irrigation is recommended (10–90%)</div>
+     </div>
+     <div class="form-group">
+       <label>Growth Stages (semicolon-separated)</label>
+       <input type="text" name="stages" class="form-control" maxlength="1000"
+              placeholder="e.g., Germination (0-15 days); Vegetative (15-45 days); Harvest (90-120 days)"
+              title="Separate each stage with a semicolon (;)">
+       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Separate stages with semicolons ( ; )</div>
+     </div>
+     <div class="form-group">
+       <label>Description</label>
+       <textarea name="description" class="form-control" maxlength="1000"
+                 placeholder="Brief description of the crop and its requirements..."></textarea>
+     </div>
+
+     <div style="display:flex;gap:12px;justify-content:flex-end;">
+       <button type="button" class="btn btn-outline" onclick="closeModal('cropModal')">Cancel</button>
+       <button type="submit" class="btn btn-primary">Add Crop</button>
+     </div>
+   </form>
+ </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+ el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+
+function fieldErr(el, msg) {
+  let err = el.parentElement.querySelector('.f-err');
+  if (!err) { err = document.createElement('div'); err.className='f-err'; err.style.cssText='font-size:12px;color:#c62828;margin-top:4px;'; el.parentElement.appendChild(err); }
+  err.textContent = msg;
+  el.style.borderColor = msg ? '#c62828' : '#66bb6a';
+}
+
+const cropForm = document.querySelector('form input[name="action"][value="create"]');
+if (cropForm) {
+  cropForm.closest('form').addEventListener('submit', function(e) {
+    let ok = true;
+
+    const nameEl   = this.querySelector('input[name="name"]');
+    const durEl    = this.querySelector('input[name="growth_duration"]');
+    const waterEl  = this.querySelector('input[name="water_requirement"]');
+    const moistEl  = this.querySelector('input[name="moisture_threshold"]');
+
+    // Crop name
+    const name = nameEl.value.trim();
+    if (!name || name.length < 2) {
+      fieldErr(nameEl, 'Crop name must be at least 2 characters.'); ok = false;
+    } else if (!/^[A-Za-z\s\-]+$/.test(name)) {
+      fieldErr(nameEl, 'Crop name should contain only letters, spaces, or hyphens.'); ok = false;
+    } else fieldErr(nameEl, '');
+
+    // Growth duration 
+    const dur = parseInt(durEl.value);
+    if (!durEl.value || isNaN(dur) || dur < 20 || dur > 730) {
+      fieldErr(durEl, 'Growth duration must be between 20 and 730 days.'); ok = false;
+    } else fieldErr(durEl, '');
+
+    // Water requirement 
+    const water = parseFloat(waterEl.value);
+    if (!waterEl.value || isNaN(water) || water < 50 || water > 5000) {
+      fieldErr(waterEl, 'Water requirement must be between 50 and 5,000 mm/season.'); ok = false;
+    } else fieldErr(waterEl, '');
+
+    // Moisture threshold 
+    const moist = parseFloat(moistEl.value);
+    if (!moistEl.value || isNaN(moist) || moist < 10 || moist > 90) {
+      fieldErr(moistEl, 'Moisture threshold must be between 10% and 90%.'); ok = false;
+    } else fieldErr(moistEl, '');
+
+    if (!ok) e.preventDefault();
+  });
+}
+</script>
+{% endblock %}

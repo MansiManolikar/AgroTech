@@ -1,1 +1,261 @@
-schedule
+{% extends 'base.html' %}
+{% block title %}Irrigation Schedule{% endblock %}
+{% block page_title %}Irrigation Management{% endblock %}
+{% block page_subtitle %}Schedule and monitor your irrigation cycles{% endblock %}
+{% block content %}
+{% if not farm %}
+<div class="empty-state">
+ <div class="empty-icon">💧</div>
+ <p>Please <a href="{{ url_for('farmer.profile') }}" style="color:var(--green-primary);font-weight:600;">create your farm profile</a> first to manage irrigation.</p>
+</div>
+{% else %}
+{% if farms|length > 1 %}
+<div class="card" style="margin-bottom:24px;padding:16px 20px;">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+   <div>
+     <div class="card-title" style="font-size:15px;">Active Farm</div>
+     <div class="card-subtitle">Schedules shown below belong to the selected farm</div>
+   </div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+     {% for farm_option in farms %}
+     <a href="{{ url_for('farmer.schedule', farm_id=farm_option.id) }}"
+        class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+       {{ farm_option.name }}
+     </a>
+     {% endfor %}
+   </div>
+ </div>
+</div>
+{% endif %}
+
+<div class="stat-grid" style="margin-bottom:24px;">
+ <div class="stat-card">
+   <div class="stat-icon">💧</div>
+   <div class="stat-value">{{ soil_reading.soil_moisture if soil_reading else '--' }}%</div>
+   <div class="stat-label">Current Moisture</div>
+   <div style="margin-top:10px;">
+     <div class="progress-bar">
+       <div class="progress-fill {% if soil_reading and soil_reading.soil_moisture < 30 %}danger{% elif soil_reading and soil_reading.soil_moisture < 50 %}warning{% endif %}"
+            style="width:{{ soil_reading.soil_moisture if soil_reading else 0 }}%;"></div>
+     </div>
+   </div>
+ </div>
+ <div class="stat-card yellow">
+   <div class="stat-icon">🎯</div>
+   <div class="stat-value">{{ crop_threshold|int }}%</div>
+   <div class="stat-label">Moisture Threshold</div>
+   <span class="stat-badge up">Crop Requirement</span>
+ </div>
+ <div class="stat-card blue">
+   <div class="stat-icon">🌧️</div>
+   <div class="stat-value">{{ weather.rainfall_mm if weather else '0' }}mm</div>
+   <div class="stat-label">Today's Rainfall</div>
+   <span class="stat-badge {% if weather and weather.rainfall_mm > 0 %}up{% else %}down{% endif %}">
+     {% if weather and weather.rainfall_mm > 5 %}Skip Irrigation{% else %}Normal{% endif %}
+   </span>
+ </div>
+ <div class="stat-card">
+   <div class="stat-icon">📅</div>
+   <div class="stat-value">{{ schedules | selectattr('status','equalto','done') | selectattr('scheduled_date','equalto', farm_today) | list | length }}</div>
+   <div class="stat-label">Irrigated Today</div>
+   <span class="stat-badge up">
+     {% if schedules | selectattr('status','equalto','done') | selectattr('scheduled_date','equalto', farm_today) | list | length > 0 %}
+       Completed
+     {% else %}
+       Not Yet
+     {% endif %}
+   </span>
+ </div>
+</div>
+
+<div class="card" style="margin-bottom:24px;background:var(--green-faint);border:1px solid var(--green-pale);">
+ <div class="card-title" style="margin-bottom:16px;">⚙️ Irrigation Logic Engine</div>
+ <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+   <div style="background:var(--white);border-radius:var(--radius-sm);padding:16px;text-align:center;">
+     <div style="font-size:28px;margin-bottom:8px;">
+       {% if soil_reading and soil_reading.soil_moisture < crop_threshold %}🔴{% else %}🟢{% endif %}
+     </div>
+     <div style="font-weight:700;font-size:14px;">Moisture Check</div>
+     <div style="font-size:12px;color:var(--text-light);margin-top:4px;">
+       {{ soil_reading.soil_moisture if soil_reading else '--' }}% vs {{ crop_threshold|int }}% threshold
+     </div>
+   </div>
+   <div style="background:var(--white);border-radius:var(--radius-sm);padding:16px;text-align:center;">
+     <div style="font-size:28px;margin-bottom:8px;">
+       {% if weather and weather.rainfall_mm > 5 %}🌧️{% else %}☀️{% endif %}
+     </div>
+     <div style="font-weight:700;font-size:14px;">Rain Check</div>
+     <div style="font-size:12px;color:var(--text-light);margin-top:4px;">
+       {% if weather and weather.rainfall_mm > 5 %}Rain active — skip irrigation{% else %}No rain — irrigation possible{% endif %}
+     </div>
+   </div>
+   <div style="background:var(--white);border-radius:var(--radius-sm);padding:16px;text-align:center;">
+     <div style="font-size:28px;margin-bottom:8px;">
+       {% if recommendation and 'Now' in recommendation.action %}🚨
+       {% elif recommendation and 'Skip' in recommendation.action %}✋
+       {% else %}✅{% endif %}
+     </div>
+     <div style="font-weight:700;font-size:14px;">Final Decision</div>
+     <div style="font-size:12px;color:var(--text-light);margin-top:4px;">{{ recommendation.action if recommendation else 'Monitor' }}</div>
+   </div>
+ </div>
+</div>
+
+<div class="card">
+ <div class="card-header">
+   <div>
+     <div class="card-title">📋 Irrigation Schedules</div>
+     <div class="card-subtitle">{{ farm.name }}</div>
+   </div>
+   <button class="btn btn-primary" onclick="openModal('scheduleModal')">➕ Add Schedule</button>
+ </div>
+
+ {% if schedules %}
+ <div class="table-wrapper">
+   <table>
+     <thead>
+       <tr>
+         <th>Date</th>
+         <th>Time</th>
+         <th>Duration</th>
+         <th>Water Amount</th>
+         <th>Reason</th>
+         <th>Status</th>
+       </tr>
+     </thead>
+     <tbody>
+       {% for s in schedules %}
+       <tr>
+         <td style="font-weight:600;">{{ s.scheduled_date }}</td>
+         <td>{{ s.scheduled_time.strftime('%I:%M %p') if s.scheduled_time else '—' }}</td>
+         <td>{{ s.duration_minutes }} minutes</td>
+         <td>{{ s.water_amount }} L</td>
+         <td style="font-size:13px;color:var(--text-light);">{{ s.reason or '—' }}</td>
+         <td>
+           <span class="badge {% if s.status == 'done' %}badge-green{% elif s.status == 'progressing' %}badge-yellow{% else %}badge-gray{% endif %}">
+             {% if s.status == 'done' %}✓ {% elif s.status == 'progressing' %}⏳ {% endif %}{{ s.status|title }}
+           </span>
+         </td>
+       </tr>
+       {% endfor %}
+     </tbody>
+   </table>
+ </div>
+ {% else %}
+ <div class="empty-state">
+   <div class="empty-icon">📅</div>
+   <p>No irrigation schedules yet. Add your first schedule!</p>
+ </div>
+ {% endif %}
+</div>
+
+<div class="modal-overlay" id="scheduleModal">
+ <div class="modal">
+   <div class="modal-header">
+     <div class="modal-title">💧 Add Irrigation Schedule</div>
+     <button class="modal-close" onclick="closeModal('scheduleModal')">✕</button>
+   </div>
+   <form method="POST" action="{{ url_for('farmer.schedule') }}">
+     <input type="hidden" name="action" value="add_schedule">
+     <input type="hidden" name="farm_id" value="{{ farm.id }}">
+     <div class="form-group">
+       <label>Scheduled Date *</label>
+       <input type="date" name="scheduled_date" class="form-control" required
+              title="Select a future date for irrigation">
+     </div>
+     <div class="form-group">
+       <label>Scheduled Time *</label>
+       <input type="time" name="scheduled_time" class="form-control" required
+              title="Select the irrigation start time">
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Duration (minutes) *</label>
+         <input type="number" name="duration_minutes" class="form-control"
+                value="45" min="10" max="480" required
+                title="Duration must be between 10 and 480 minutes">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 10 – 480 minutes</div>
+       </div>
+       <div class="form-group">
+         <label>Water Amount (Litres) *</label>
+         <input type="number" name="water_amount" class="form-control"
+                value="400" step="50" min="50" max="100000" required
+                title="Water amount must be between 50 and 100,000 litres">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Min 50 L — Max 1,00,000 L</div>
+       </div>
+     </div>
+     <div class="form-group">
+       <label>Reason / Notes</label>
+       <input type="text" name="reason" class="form-control"
+              placeholder="e.g., Low moisture detected"
+              maxlength="255"
+              title="Optional — brief note about why irrigation is scheduled">
+     </div>
+     <div style="display:flex;gap:12px;justify-content:flex-end;">
+       <button type="button" class="btn btn-outline" onclick="closeModal('scheduleModal')">Cancel</button>
+       <button type="submit" class="btn btn-primary">💧 Schedule Irrigation</button>
+     </div>
+   </form>
+ </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+ el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+
+const dateInput = document.querySelector('input[name="scheduled_date"]');
+if (dateInput) dateInput.min = new Date().toISOString().split('T')[0];
+if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+const timeInput = document.querySelector('input[name="scheduled_time"]');
+if (timeInput && !timeInput.value) timeInput.value = new Date().toTimeString().slice(0, 5);
+
+function fieldErr(el, msg) {
+  let err = el.parentElement.querySelector('.f-err');
+  if (!err) { err = document.createElement('div'); err.className = 'f-err'; err.style.cssText='font-size:12px;color:#c62828;margin-top:4px;'; el.parentElement.appendChild(err); }
+  err.textContent = msg;
+  el.style.borderColor = msg ? '#c62828' : '#66bb6a';
+}
+
+const schedForm = document.querySelector('form input[name="action"][value="add_schedule"]');
+if (schedForm) {
+  schedForm.closest('form').addEventListener('submit', function(e) {
+    let ok = true;
+
+    const dateEl = this.querySelector('input[name="scheduled_date"]');
+    const timeEl = this.querySelector('input[name="scheduled_time"]');
+    const durEl = this.querySelector('input[name="duration_minutes"]');
+    const waterEl = this.querySelector('input[name="water_amount"]');
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const selDate = new Date(dateEl.value);
+    if (!dateEl.value) {
+      fieldErr(dateEl, 'Please select a scheduled date.'); ok = false;
+    } else if (selDate < today) {
+      fieldErr(dateEl, 'Scheduled date cannot be in the past.'); ok = false;
+    } else fieldErr(dateEl, '');
+
+    if (!timeEl.value) {
+      fieldErr(timeEl, 'Please select a start time.'); ok = false;
+    } else fieldErr(timeEl, '');
+
+    const dur = parseInt(durEl.value);
+    if (!durEl.value || isNaN(dur) || dur < 10 || dur > 480) {
+      fieldErr(durEl, 'Duration must be between 10 and 480 minutes.'); ok = false;
+    } else fieldErr(durEl, '');
+
+    const water = parseFloat(waterEl.value);
+    if (!waterEl.value || isNaN(water) || water < 50 || water > 50000) {
+      fieldErr(waterEl, 'Water amount must be between 50 and 50,000 litres.'); ok = false;
+    } else fieldErr(waterEl, '');
+
+    if (!ok) e.preventDefault();
+  });
+}
+</script>
+{% endblock %}

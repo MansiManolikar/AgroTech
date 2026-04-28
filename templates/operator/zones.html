@@ -1,1 +1,154 @@
-zones
+{% extends 'base.html' %}
+{% block title %}Agro Zones{% endblock %}
+{% block page_title %}Agro Zone Management{% endblock %}
+{% block page_subtitle %}Define and manage agricultural zones by region and climate{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+ <button class="btn btn-primary" onclick="openModal('zoneModal')">➕ Add New Zone</button>
+</div>
+{% if zones %}
+<div class="ops-grid">
+ {% for z in zones %}
+ <div class="zone-card">
+   <div style="background:linear-gradient(135deg,var(--green-dark),var(--green-primary));padding:16px 20px;display:flex;align-items:center;gap:14px;">
+     <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🗺️</div>
+     <div>
+       <div style="color:#fff;font-weight:700;font-size:16px;">{{ z.name }}</div>
+       <div style="color:rgba(255,255,255,0.7);font-size:13px;">{{ z.region }}</div>
+     </div>
+   </div>
+   <div class="zone-card-body">
+     <p style="font-size:13px;color:var(--text-mid);margin-bottom:14px;line-height:1.6;">{{ z.description or 'No description available.' }}</p>
+     <div class="zone-card-meta">
+       <span class="meta-chip">🪨 {{ z.soil_type or 'N/A' }}</span>
+       <span class="meta-chip">🌤️ {{ z.climate or 'N/A' }}</span>
+     </div>
+   </div>
+
+   <div class="zone-card-footer">
+     <span class="badge badge-green">{{ z.farm_count }} Farm{{ 's' if z.farm_count != 1 }}</span>
+     <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this zone?')">
+       <input type="hidden" name="action" value="delete">
+       <input type="hidden" name="zone_id" value="{{ z.id }}">
+       <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+     </form>
+   </div>
+ </div>
+ {% endfor %}
+
+</div>
+{% else %}
+<div class="empty-state">
+ <div class="empty-icon">🗺️</div>
+ <p>No agro zones defined yet. Create your first zone!</p>
+</div>
+{% endif %}
+
+<!-- ADD ZONE MODAL -->
+<div class="modal-overlay" id="zoneModal">
+ <div class="modal">
+   <div class="modal-header">
+     <div class="modal-title">🗺️ Add New Agro Zone</div>
+     <button class="modal-close" onclick="closeModal('zoneModal')">✕</button>
+   </div>
+   <form method="POST">
+     <input type="hidden" name="action" value="create">
+     <div class="form-row">
+       <div class="form-group">
+         <label>Zone Name *</label>
+         <input type="text" name="name" class="form-control" placeholder="e.g., Deccan Plateau Zone" required
+                minlength="3" maxlength="100"
+                title="Zone name must be at least 3 characters">
+       </div>
+       <div class="form-group">
+         <label>Region *</label>
+         <input type="text" name="region" class="form-control" placeholder="e.g., Karnataka, Maharashtra" required
+                minlength="2" maxlength="150"
+                title="Region must be at least 2 characters">
+       </div>
+     </div>
+     <div class="form-row">
+       <div class="form-group">
+         <label>Soil Type</label>
+         <select name="soil_type" class="form-control" required title="Please select a soil type">
+           <option value="">Select soil type</option>
+           {% for s in ['Black Cotton Soil','Laterite Soil','Red Sandy Soil','Alluvial Soil','Clay Loam','Sandy Loam'] %}
+           <option value="{{ s }}">{{ s }}</option>
+           {% endfor %}
+         </select>
+       </div>
+
+       <div class="form-group">
+         <label>Climate</label>
+         <select name="climate" class="form-control" required title="Please select a climate type">
+           <option value="">Select climate</option>
+           {% for c in ['Semi-Arid','Tropical Humid','Arid','Tropical','Mediterranean','Sub-Tropical'] %}
+           <option value="{{ c }}">{{ c }}</option>
+           {% endfor %}
+         </select>
+       </div>
+     </div>
+
+     <div class="form-group">
+       <label>Description</label>
+       <textarea name="description" class="form-control" placeholder="Brief description of zone characteristics..." maxlength="1000"></textarea>
+     </div>
+     <div style="display:flex;gap:12px;justify-content:flex-end;">
+       <button type="button" class="btn btn-outline" onclick="closeModal('zoneModal')">Cancel</button>
+       <button type="submit" class="btn btn-primary">Create Zone</button>
+     </div>
+   </form>
+ </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+ el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+function fieldErr(el, msg) {
+  let err = el.parentElement.querySelector('.f-err');
+  if (!err) { err = document.createElement('div'); err.className='f-err'; err.style.cssText='font-size:12px;color:#c62828;margin-top:4px;'; el.parentElement.appendChild(err); }
+  err.textContent = msg;
+  el.style.borderColor = msg ? '#c62828' : '#66bb6a';
+}
+
+const zoneForm = document.querySelector('form input[name="action"][value="create"]');
+if (zoneForm) {
+  zoneForm.closest('form').addEventListener('submit', function(e) {
+    let ok = true;
+
+    const nameEl   = this.querySelector('input[name="name"]');
+    const regionEl = this.querySelector('input[name="region"]');
+    const soilEl   = this.querySelector('select[name="soil_type"]');
+    const climEl   = this.querySelector('select[name="climate"]');
+
+    const name = nameEl.value.trim();
+    if (!name || name.length < 3) {
+      fieldErr(nameEl, 'Zone name must be at least 3 characters.'); ok = false;
+    } else if (name.length > 100) {
+      fieldErr(nameEl, 'Zone name must be under 100 characters.'); ok = false;
+    } else fieldErr(nameEl, '');
+
+    const region = regionEl.value.trim();
+    if (!region || region.length < 2) {
+      fieldErr(regionEl, 'Region is required (min 2 characters).'); ok = false;
+    } else fieldErr(regionEl, '');
+
+    if (!soilEl.value) {
+      fieldErr(soilEl, 'Please select a soil type.'); ok = false;
+    } else fieldErr(soilEl, '');
+
+    if (!climEl.value) {
+      fieldErr(climEl, 'Please select a climate type.'); ok = false;
+    } else fieldErr(climEl, '');
+
+    if (!ok) e.preventDefault();
+  });
+}
+</script>
+{% endblock %}
