@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Identity | AgriTech Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+  {% for category, message in messages %}
+  <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="auth-page">
+  <div class="auth-left">
+    <div style="margin-bottom:48px;">
+      <a href="{{ url_for('auth.login') }}" style="color:rgba(255,255,255,0.7);font-size:14px;display:flex;align-items:center;gap:8px;">← Back to Login</a>
+    </div>
+    <div class="hero-tag" style="margin-bottom:20px;">🛡️ Identity Verification</div>
+    <h2>Answer Your Security Question</h2>
+    <p>This question was set by you during registration to protect your account.</p>
+    <div style="margin-top:48px;">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:1px;margin-bottom:14px;">RESET STEPS</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">✓</div>
+          <span style="color:rgba(255,255,255,0.5);font-size:13px;text-decoration:line-through;">Enter your email</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#fff;color:#2e7d32;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
+          <span style="color:#fff;font-size:13px;font-weight:600;">Answer security question</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">3</div>
+          <span style="color:rgba(255,255,255,0.5);font-size:13px;">Set new password</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box">
+      <div style="margin-bottom:24px;"><span style="font-size:40px;">🛡️</span></div>
+      <h3>Security Verification</h3>
+      <p>Answer the question below to verify your identity.</p>
+
+      <form method="POST" action="{{ url_for('auth.verify_security_question') }}" id="secForm" novalidate>
+        <div class="form-group">
+          <label>Your Security Question</label>
+          <div style="background:var(--green-faint);border:1px solid var(--green-mid);border-radius:10px;padding:14px;font-size:14px;color:var(--green-dark);font-weight:500;margin-bottom:4px;">
+            🔐 {{ question }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Your Answer *</label>
+          <input type="text" name="security_answer" id="sec_answer" class="form-control" placeholder="Type your answer here" required maxlength="100" autofocus autocomplete="off">
+          <div style="font-size:11px;color:var(--text-light);margin-top:4px;">Answer is not case-sensitive</div>
+          <div class="field-error" id="err_sec_answer"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px;">
+          Verify Answer →
+        </button>
+      </form>
+
+      <div class="auth-divider">or</div>
+      <p style="text-align:center;font-size:14px;color:var(--text-light);">
+        <a href="{{ url_for('auth.login') }}" class="auth-link">← Try a different email</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+.field-error { font-size:12px;color:#c62828;margin-top:5px;min-height:16px; }
+.form-control.invalid { border-color:#c62828 !important; }
+</style>
+<script>
+document.getElementById('secForm').addEventListener('submit', function(e) {
+  const ans = document.getElementById('sec_answer').value.trim();
+  const err = document.getElementById('err_sec_answer');
+  if (ans.length < 2) {
+    err.textContent = 'Please enter your security answer.';
+    document.getElementById('sec_answer').classList.add('invalid');
+    e.preventDefault();
+  }
+});
+setTimeout(() => {
+  document.querySelectorAll('.flash').forEach(el => {
+    el.style.transition = 'all 0.4s ease';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 400);
+  });
+}, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Approvals{% endblock %}
+{% block page_title %}Approval Queue{% endblock %}
+{% block page_subtitle %}Review farm zone assignments and irrigation schedules{% endblock %}
+
+{% block content %}
+<div class="grid-2" style="align-items:start;">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Agro Zone Assignments</div>
+        <div class="card-subtitle">Farmer farm profiles waiting for zone approval</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Farm</th>
+            <th>Farmer</th>
+            <th>Crop</th>
+            <th>Zone</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for farm in farms %}
+          <tr>
+            <td>
+              <div style="font-weight:700;">{{ farm.name }}</div>
+              <div style="font-size:12px;color:var(--text-light);">{{ farm.location or 'No location' }}</div>
+            </td>
+            <td>
+              <div>{{ farm.farmer_name }}</div>
+              <div style="font-size:12px;color:var(--text-light);">{{ farm.email }}</div>
+            </td>
+            <td>{{ farm.crop_name or 'N/A' }}</td>
+            <td>{{ farm.zone_name or 'No zone' }}</td>
+            <td>
+              <span class="badge {% if farm.zone_status == 'approved' %}badge-green{% elif farm.zone_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+                {{ (farm.zone_status or 'pending')|title }}
+              </span>
+            </td>
+            <td>
+              {% if (farm.zone_status or 'pending') == 'pending' %}
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <form method="POST" style="margin:0;">
+                  <input type="hidden" name="action" value="approve_farm_zone">
+                  <input type="hidden" name="farm_id" value="{{ farm.id }}">
+                  <button class="btn btn-primary btn-sm" type="submit">Approve</button>
+                </form>
+                <form method="POST" style="margin:0;">
+                  <input type="hidden" name="action" value="reject_farm_zone">
+                  <input type="hidden" name="farm_id" value="{{ farm.id }}">
+                  <button class="btn btn-danger btn-sm" type="submit">Reject</button>
+                </form>
+              </div>
+              {% else %}
+              <span style="font-size:12px;color:var(--text-light);">Reviewed</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-light);">No farm records found</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Irrigation Schedules</div>
+        <div class="card-subtitle">Only approved schedules become active</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Schedule</th>
+            <th>Farm</th>
+            <th>Water</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for schedule in schedules %}
+          <tr>
+            <td>
+              <div style="font-weight:700;">{{ schedule.scheduled_date }}</div>
+              <div style="font-size:12px;color:var(--text-light);">{{ schedule.scheduled_time }} · {{ schedule.duration_minutes }} min</div>
+            </td>
+            <td>
+              <div>{{ schedule.farm_name }}</div>
+              <div style="font-size:12px;color:var(--text-light);">{{ schedule.farmer_name }} · {{ schedule.crop_name or 'N/A' }}</div>
+            </td>
+            <td>{{ schedule.water_amount }} L</td>
+            <td>
+              <span class="badge {% if schedule.approval_status == 'approved' %}badge-green{% elif schedule.approval_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+                {{ (schedule.approval_status or 'pending')|title }}
+              </span>
+            </td>
+            <td>
+              {% if (schedule.approval_status or 'pending') == 'pending' %}
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <form method="POST" style="margin:0;">
+                  <input type="hidden" name="action" value="approve_schedule">
+                  <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
+                  <button class="btn btn-primary btn-sm" type="submit">Approve</button>
+                </form>
+                <form method="POST" style="margin:0;">
+                  <input type="hidden" name="action" value="reject_schedule">
+                  <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
+                  <button class="btn btn-danger btn-sm" type="submit">Reject</button>
+                </form>
+              </div>
+              {% else %}
+              <span style="font-size:12px;color:var(--text-light);">Reviewed</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light);">No schedules found</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
