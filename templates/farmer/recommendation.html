@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}AI Recommendation{% endblock %}
-{% block page_title %}🤖 Smart Crop Recommendation{% endblock %}
+{% block page_title %}🤖 Smart Recommendation{% endblock %}
 {% block page_subtitle %}Based on live weather, soil moisture & crop stage — {{ farm.name }}{% endblock %}
 
 {% block content %}
@@ -14,8 +14,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       {% for farm_option in farms %}
-      <a href="{{ url_for('farmer.recommendation', farm_id=farm_option.id) }}"
-         class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+      <a href="{{ url_for('farmer.recommendation', farm_id=farm_option.id) }}" class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
         {{ farm_option.name }}
       </a>
       {% endfor %}
@@ -33,9 +32,7 @@
       <input type="hidden" name="next" value="{{ url_for('farmer.recommendation', farm_id=farm.id) }}">
       <div class="form-group">
         <label>Soil Moisture (%)</label>
-        <input type="number" name="soil_moisture" class="form-control" min="0" max="100" step="0.1" required title="Enter soil moisture between 0% and 100%"
-               placeholder="e.g. 42.5" autofocus
-               value="{{ soil_reading.soil_moisture if soil_reading else '' }}">
+        <input type="number" name="soil_moisture" class="form-control" min="0" max="100" step="0.1" required title="Enter soil moisture between 0% and 100%" placeholder="e.g. 42.5" autofocus value="{{ soil_reading.soil_moisture if soil_reading else '' }}">
         <div style="font-size:12px;color:var(--text-light);margin-top:6px;">
           {% if rec and rec.stage %}
             Stage-adjusted threshold: <strong>{{ '%.1f'|format(rec.stage.get('progress_pct',0)) }}% through cycle</strong>
@@ -66,14 +63,11 @@
 </div>
 
 {% if rec %}
-<div style="background:{{ rec.color }}12;border:2px solid {{ rec.color }};border-radius:16px;
-            padding:28px;margin-bottom:24px;position:relative;overflow:hidden;">
-  <div style="position:absolute;right:24px;top:50%;transform:translateY(-50%);
-              font-size:80px;opacity:0.07;pointer-events:none;">{{ rec.icon }}</div>
+<div style="background:{{ rec.color }}12;border:2px solid {{ rec.color }};border-radius:16px; padding:28px;margin-bottom:24px;position:relative;overflow:hidden;">
+  <div style="position:absolute;right:24px;top:50%;transform:translateY(-50%); font-size:80px;opacity:0.07;pointer-events:none;">{{ rec.icon }}</div>
 
   <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
-    <div style="width:64px;height:64px;border-radius:16px;background:{{ rec.color }};
-                display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
+    <div style="width:64px;height:64px;border-radius:16px;background:{{ rec.color }}; display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
       {{ rec.icon }}
     </div>
     <div style="flex:1;min-width:200px;">
@@ -96,8 +90,7 @@
       <span>{{ rec.stage.days_elapsed }} days elapsed · {{ rec.stage.days_remaining }} days remaining</span>
     </div>
     <div style="background:rgba(0,0,0,0.08);border-radius:99px;height:8px;">
-      <div style="background:{{ rec.color }};width:{{ rec.stage.progress_pct }}%;height:8px;
-                  border-radius:99px;transition:width 1s;"></div>
+      <div style="background:{{ rec.color }};width:{{ rec.stage.progress_pct }}%;height:8px; border-radius:99px;transition:width 1s;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:4px;">
       <span>Germination</span><span>Vegetative</span><span>Flowering</span><span>Harvest</span>
@@ -108,9 +101,7 @@
 {% if rec.alerts %}
 <div style="margin-bottom:24px;">
   {% for al in rec.alerts %}
-  <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;margin-bottom:10px;
-              background:{% if al.type=='critical' %}#ffebee{% elif al.type=='warning' %}#fff3e0{% else %}#e3f2fd{% endif %};
-              border-left:4px solid {% if al.type=='critical' %}#c62828{% elif al.type=='warning' %}#e65100{% else %}#1565c0{% endif %};">
+  <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;margin-bottom:10px; background:{% if al.type=='critical' %}#ffebee{% elif al.type=='warning' %}#fff3e0{% else %}#e3f2fd{% endif %}; border-left:4px solid {% if al.type=='critical' %}#c62828{% elif al.type=='warning' %}#e65100{% else %}#1565c0{% endif %};">
     <span style="font-size:20px;">{% if al.type=='critical' %}🚨{% elif al.type=='warning' %}⚠️{% else %}ℹ️{% endif %}</span>
     <span style="font-size:14px;color:#333;font-weight:500;">{{ al.message }}</span>
   </div>
@@ -168,7 +159,7 @@
     {% for f in forecast %}
     <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="width:72px;font-size:13px;font-weight:600;color:#555;">
-        {{ f.date[5:] }}
+        {% if f.day_offset == 0 %}Today{% elif f.day_offset == 1 %}Tomorrow{% else %}{{ f.date }}{% endif %}
       </div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:600;">{{ f.condition }}</div>
@@ -181,7 +172,7 @@
     </div>
     {% endfor %}
     {% else %}
-    <div class="empty-state"><div class="empty-icon">📡</div><p>Forecast unavailable — check API key</p></div>
+    <div class="empty-state"><div class="empty-icon">📡</div><p>Forecast unavailable</p></div>
     {% endif %}
   </div>
 

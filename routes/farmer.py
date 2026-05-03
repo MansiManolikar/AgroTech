@@ -10,11 +10,11 @@ from mongo_db import (
     get_weather_history,
     now_ist,
 )
-from mongo_query import fetch_current_weather, fetch_forecast
+from mongo_query import fetch_current_weather, fetch_forecast, fetch_recent_days
 from recommendation import generate_recommendation, get_crop_stage
 from notifications import create_notification
 import json
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 
 farmer_bp = Blueprint('farmer', __name__)
 
@@ -83,6 +83,26 @@ def _get_crop(crop_id):
     conn.close()
     return crop
 
+def _validate_planting_date(crop_id, planting_date_value):
+    if not planting_date_value:
+        return None
+
+    try:
+        planted_on = datetime.strptime(planting_date_value, "%Y-%m-%d").date()
+    except ValueError:
+        return "Enter a valid planting date."
+
+    if planted_on > date.today():
+        return "Planting date cannot be in the future."
+
+    crop = _get_crop(crop_id)
+    growth_duration = int((crop or {}).get("growth_duration") or 0)
+    if growth_duration and (date.today() - planted_on).days > growth_duration:
+        crop_name = crop.get("name") if crop else "selected crop"
+        return f"Planting date is outside the {growth_duration}-day growth duration for {crop_name}."
+
+    return None
+
 def _refresh_weather(farm):
     if not farm:
         return None
@@ -109,7 +129,8 @@ def _build_farm_view(farm):
 
     weather_doc = _refresh_weather(farm)
     soil_reading = get_latest_soil(farm['id'])
-    forecast = fetch_forecast(farm.get("location", ""), days=3)
+    forecast     = fetch_forecast(farm.get("location", ""), days=3)
+    recent_days  = fetch_recent_days(farm.get("location", ""))
     crop = _get_crop(farm.get("crop_id"))
     rec = generate_recommendation(farm, crop, soil_reading, weather_doc, forecast)
 
@@ -118,6 +139,7 @@ def _build_farm_view(farm):
         'weather_doc': weather_doc,
         'soil_reading': soil_reading,
         'forecast': forecast,
+        'recent_days': recent_days,
         'crop': crop,
     }
 
@@ -136,6 +158,11 @@ def _combine_schedule_datetime(schedule_row):
     return datetime.combine(scheduled_date, scheduled_time)
 
 def _derive_schedule_status(schedule_row, current_time):
+    if schedule_row.get('approval_status') == 'rejected':
+        return 'rejected'
+    if schedule_row.get('approval_status') not in (None, 'approved'):
+        return 'pending'
+
     start_at = _combine_schedule_datetime(schedule_row)
     duration_minutes = int(schedule_row.get('duration_minutes') or 0)
     if not start_at:
@@ -178,11 +205,97 @@ def _sync_irrigation_statuses(farm_id):
     conn.close()
     return schedules
 
+def _parse_schedule_time(value):
+    if not value:
+        return time(hour=0, minute=0)
+    try:
+        return datetime.strptime(value, "%H:%M").time()
+    except ValueError:
+        try:
+            return datetime.strptime(value, "%H:%M:%S").time()
+        except ValueError:
+            return None
+
+def _validate_schedule_conflicts(cursor, farm, scheduled_date, scheduled_time, duration_minutes, weather_doc, soil_reading, crop_threshold):
+    errors = []
+    warnings = []
+
+    if farm.get('zone_status') != 'approved':
+        errors.append('Your farm zone assignment must be approved before irrigation can be scheduled.')
+
+    try:
+        schedule_date = datetime.strptime(scheduled_date, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        errors.append('Select a valid schedule date.')
+        return errors, warnings
+
+    start_time = _parse_schedule_time(scheduled_time)
+    if not start_time:
+        errors.append('Select a valid schedule time.')
+        return errors, warnings
+
+    try:
+        duration = int(duration_minutes)
+    except (TypeError, ValueError):
+        errors.append('Duration must be a valid number of minutes.')
+        return errors, warnings
+
+    requested_start = datetime.combine(schedule_date, start_time)
+    requested_end = requested_start + timedelta(minutes=duration)
+
+    cursor.execute(
+        """
+        SELECT scheduled_date, scheduled_time, duration_minutes
+        FROM irrigation_schedules
+        WHERE farm_id = %s
+          AND scheduled_date = %s
+          AND COALESCE(approval_status, 'pending') <> 'rejected'
+        """,
+        (farm['id'], schedule_date),
+    )
+    for existing in cursor.fetchall():
+        existing_start = _combine_schedule_datetime(existing)
+        if not existing_start:
+            continue
+        existing_end = existing_start + timedelta(minutes=int(existing.get('duration_minutes') or 0))
+        if existing_start and requested_start < existing_end and requested_end > existing_start:
+            errors.append('This schedule overlaps another irrigation schedule for the same farm.')
+            break
+
+    rainfall = float((weather_doc or {}).get('rainfall_mm') or 0)
+    if rainfall > 5:
+        errors.append(f'Rainfall is {rainfall:.1f} mm today, so irrigation is blocked.')
+
+    if soil_reading and soil_reading.get('soil_moisture') is not None:
+        moisture = float(soil_reading.get('soil_moisture'))
+        if moisture > float(crop_threshold):
+            errors.append(f'Soil moisture is {moisture:.1f}%, above the {float(crop_threshold):.1f}% crop threshold.')
+
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS total
+        FROM irrigation_schedules
+        WHERE farm_id = %s
+          AND scheduled_date = %s
+          AND COALESCE(approval_status, 'pending') <> 'rejected'
+        """,
+        (farm['id'], schedule_date),
+    )
+    same_day_count = cursor.fetchone()['total']
+    if same_day_count >= 3:
+        errors.append('Same-day overuse limit reached. A farm can have at most 3 irrigations per day.')
+    elif same_day_count == 2:
+        warnings.append('This will be the third irrigation for this farm today.')
+
+    return errors, warnings
+
 @farmer_bp.route('/dashboard')
 @farmer_required
 def dashboard():
     requested_farm_id = _parse_farm_id(request.args.get('farm_id'))
     farms, farm = _get_active_farm(session['user_id'], requested_farm_id)
+
+    farm_view = {}
 
     rec = None
     weather_doc = None
@@ -193,6 +306,7 @@ def dashboard():
     moisture_chart_data = []
     advisories = []
     weather_history = []
+    crop_calendar = None
 
     if farm:
         farm_id = farm['id']
@@ -201,6 +315,10 @@ def dashboard():
         weather_doc = farm_view['weather_doc']
         soil_reading = farm_view['soil_reading']
         forecast = farm_view['forecast']
+        crop_calendar = get_crop_stage(farm.get("planting_date"), farm.get("growth_duration") or 120)
+
+        if farm.get('zone_status') != 'approved':
+            rec = None
 
         conn = get_db()
         cursor = conn.cursor(dictionary=True)
@@ -309,6 +427,8 @@ def dashboard():
         advisories=advisories,
         moisture_data=json.dumps(moisture_chart_data),
         weather_history=weather_history,
+        recent_days=farm_view.get('recent_days', []),
+        crop_calendar=crop_calendar,
     )
 
 @farmer_bp.route('/log-soil', methods=['POST'])
@@ -343,6 +463,9 @@ def recommendation():
     if not farm:
         flash('Set up your farm profile first.', 'info')
         return redirect(url_for('farmer.profile'))
+    if farm.get('zone_status') != 'approved':
+        flash('Smart recommendations are available after admin approves your farm zone assignment.', 'info')
+        return redirect(url_for('farmer.dashboard', farm_id=farm['id']))
 
     farm_view = _build_farm_view(farm)
     crop = farm_view['crop']
@@ -394,11 +517,20 @@ def profile():
             return redirect(url_for('farmer.profile'))
 
         if action == 'create_farm':
+            planting_error = _validate_planting_date(
+                request.form.get('crop_id') or None,
+                request.form.get('planting_date') or None,
+            )
+            if planting_error:
+                conn.close()
+                flash(planting_error, 'error')
+                return redirect(url_for('farmer.profile', new_farm=1))
+
             cursor.execute(
                 """
                 INSERT INTO farms (user_id, name, location, area, crop_id, zone_id,
-                                   soil_type, irrigation_type, planting_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                   soil_type, irrigation_type, planting_date, zone_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     session['user_id'],
@@ -410,6 +542,7 @@ def profile():
                     request.form.get('soil_type'),
                     request.form.get('irrigation_type'),
                     request.form.get('planting_date') or None,
+                    'pending',
                 ),
             )
             conn.commit()
@@ -442,21 +575,31 @@ def profile():
                             f'"{request.form.get("farm_name")}" in zone "{zone_name_val}".'
                         ),
                         ntype='info',
-                        link='/operator/farmers',
+                        link='/operator/approvals',
                     )
             except Exception:
                 pass
 
-            flash('Farm created!', 'success')
+            flash('Farm created! Zone assignment is pending admin approval.', 'success')
             return redirect(url_for('farmer.profile', farm_id=new_farm_id))
 
         if action == 'update_farm':
             farm_id = _parse_farm_id(request.form.get('farm_id'))
+            planting_error = _validate_planting_date(
+                request.form.get('crop_id') or None,
+                request.form.get('planting_date') or None,
+            )
+            if planting_error:
+                conn.close()
+                flash(planting_error, 'error')
+                return redirect(url_for('farmer.profile', farm_id=farm_id, edit_farm_id=farm_id))
+
             cursor.execute(
                 """
                 UPDATE farms
                 SET name = %s, location = %s, area = %s, crop_id = %s,
-                    zone_id = %s, soil_type = %s, irrigation_type = %s, planting_date = %s
+                    zone_id = %s, soil_type = %s, irrigation_type = %s, planting_date = %s,
+                    zone_status = %s
                 WHERE id = %s AND user_id = %s
                 """,
                 (
@@ -468,6 +611,7 @@ def profile():
                     request.form.get('soil_type'),
                     request.form.get('irrigation_type'),
                     request.form.get('planting_date') or None,
+                    'pending',
                     farm_id,
                     session['user_id'],
                 ),
@@ -475,7 +619,23 @@ def profile():
             conn.commit()
             conn.close()
             session['active_farm_id'] = farm_id
-            flash('Farm updated!', 'success')
+            try:
+                conn_op = get_db()
+                cur_op = conn_op.cursor(dictionary=True)
+                cur_op.execute("SELECT id FROM users WHERE role = 'operator'")
+                operators = cur_op.fetchall()
+                conn_op.close()
+                for operator in operators:
+                    create_notification(
+                        user_id=operator['id'],
+                        title=f'Farm Update Pending Approval',
+                        message=f'Farmer {session["user_name"]} updated farm "{request.form.get("farm_name")}".',
+                        ntype='info',
+                        link='/operator/approvals',
+                    )
+            except Exception:
+                pass
+            flash('Farm updated! Zone assignment is pending admin approval.', 'success')
             return redirect(url_for('farmer.profile', farm_id=farm_id))
 
         conn.close()
@@ -520,11 +680,31 @@ def schedule():
     cursor = conn.cursor(dictionary=True)
 
     if request.method == 'POST' and farm and request.form.get('action') == 'add_schedule':
+        farm_view = _build_farm_view(farm)
+        weather_doc = farm_view['weather_doc']
+        soil_reading = farm_view['soil_reading']
+        crop_threshold = float((farm_view['crop'] or {}).get('moisture_threshold') or 35)
+        errors, warnings = _validate_schedule_conflicts(
+            cursor,
+            farm,
+            request.form.get('scheduled_date'),
+            request.form.get('scheduled_time'),
+            request.form.get('duration_minutes', 45),
+            weather_doc,
+            soil_reading,
+            crop_threshold,
+        )
+        if errors:
+            conn.close()
+            for error in errors:
+                flash(error, 'error')
+            return redirect(url_for('farmer.schedule', farm_id=farm['id']))
+
         cursor.execute(
             """
             INSERT INTO irrigation_schedules
-            (farm_id, scheduled_date, scheduled_time, duration_minutes, water_amount, reason, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (farm_id, scheduled_date, scheduled_time, duration_minutes, water_amount, reason, status, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 farm['id'],
@@ -533,6 +713,7 @@ def schedule():
                 request.form.get('duration_minutes', 45),
                 request.form.get('water_amount', 400),
                 request.form.get('reason', ''),
+                'pending',
                 'pending',
             ),
         )
@@ -551,7 +732,25 @@ def schedule():
             ntype='info',
             link=f'/farmer/schedule?farm_id={farm["id"]}',
         )
-        flash('Irrigation scheduled!', 'success')
+        try:
+            conn_op = get_db()
+            cur_op = conn_op.cursor(dictionary=True)
+            cur_op.execute("SELECT id FROM users WHERE role = 'operator'")
+            operators = cur_op.fetchall()
+            conn_op.close()
+            for operator in operators:
+                create_notification(
+                    user_id=operator['id'],
+                    title='Irrigation Approval Requested',
+                    message=f'{session["user_name"]} submitted an irrigation schedule for "{farm["name"]}".',
+                    ntype='info',
+                    link='/operator/approvals',
+                )
+        except Exception:
+            pass
+        for warning in warnings:
+            flash(warning, 'info')
+        flash('Irrigation schedule submitted for admin approval.', 'success')
         return redirect(url_for('farmer.schedule', farm_id=farm['id']))
 
     schedules = []

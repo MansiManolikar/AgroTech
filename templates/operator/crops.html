@@ -86,47 +86,38 @@
      <div class="form-row">
        <div class="form-group">
          <label>Crop Name *</label>
-         <input type="text" name="name" class="form-control" placeholder="e.g., Rice" required
-                minlength="2" maxlength="100" pattern="[A-Za-z\s\-]+"
-                title="Crop name: letters, spaces or hyphens only (min 2 chars)">
+         <input type="text" name="name" class="form-control" placeholder="e.g., Rice" required minlength="2" maxlength="100" pattern="[A-Za-z\s\-]+" title="Crop name: letters, spaces or hyphens only (min 2 chars)">
        </div>
        <div class="form-group">
          <label>Variety</label>
-         <input type="text" name="variety" class="form-control" placeholder="e.g., IR-64, Bt Cotton"
-                maxlength="100" title="Optional crop variety or sub-type">
+         <input type="text" name="variety" class="form-control" placeholder="e.g., IR-64, Bt Cotton" maxlength="100" title="Optional crop variety or sub-type">
        </div>
      </div>
      <div class="form-row">
        <div class="form-group">
          <label>Growth Duration (days) *</label>
-         <input type="number" name="growth_duration" class="form-control" placeholder="e.g., 120" required
-                min="20" max="730" title="Growth duration: 20–730 days">
+         <input type="number" name="growth_duration" class="form-control" placeholder="e.g., 120" required min="20" max="730" title="Growth duration: 20–730 days">
          <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 20 – 730 days</div>
        </div>
        <div class="form-group">
          <label>Water Requirement (mm/season) *</label>
-         <input type="number" name="water_requirement" class="form-control" placeholder="e.g., 1200" required
-                min="50" max="5000" title="Water requirement: 50–5,000 mm/season">
+         <input type="number" name="water_requirement" class="form-control" placeholder="e.g., 1200" required min="50" max="5000" title="Water requirement: 50–5,000 mm/season">
          <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 50 – 5,000 mm</div>
        </div>
      </div>
      <div class="form-group">
        <label>Moisture Threshold (%) *</label>
-       <input type="number" name="moisture_threshold" class="form-control" placeholder="e.g., 35" required
-              min="10" max="90" step="1" title="Moisture threshold: 10%–90%">
+       <input type="number" name="moisture_threshold" class="form-control" placeholder="e.g., 35" required min="10" max="90" step="1" title="Moisture threshold: 10%–90%">
        <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Soil moisture % below which irrigation is recommended (10–90%)</div>
      </div>
      <div class="form-group">
        <label>Growth Stages (semicolon-separated)</label>
-       <input type="text" name="stages" class="form-control" maxlength="1000"
-              placeholder="e.g., Germination (0-15 days); Vegetative (15-45 days); Harvest (90-120 days)"
-              title="Separate each stage with a semicolon (;)">
+       <input type="text" name="stages" class="form-control" maxlength="1000" placeholder="e.g., Germination (0-15 days); Vegetative (15-45 days); Harvest (90-120 days)" title="Separate each stage with a semicolon (;)">
        <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Separate stages with semicolons ( ; )</div>
      </div>
      <div class="form-group">
        <label>Description</label>
-       <textarea name="description" class="form-control" maxlength="1000"
-                 placeholder="Brief description of the crop and its requirements..."></textarea>
+       <textarea name="description" class="form-control" maxlength="1000" placeholder="Brief description of the crop and its requirements..."></textarea>
      </div>
 
      <div style="display:flex;gap:12px;justify-content:flex-end;">

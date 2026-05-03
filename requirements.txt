@@ -1,6 +1,5 @@
 flask
 mysql-connector-python
 pymongo
-flask-mail
 itsdangerous
 requests

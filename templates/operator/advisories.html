@@ -7,7 +7,7 @@
  <span class="badge badge-green" style="font-size:14px;padding:10px 18px;">
    {{ advisories|selectattr('is_published','equalto',1)|list|length }} Published
  </span>
- <button class="btn btn-primary" onclick="openModal('advisoryModal')">📢 Create Advisory</button>
+ <button class="btn btn-primary" onclick="openModal('advisoryModal')">➕ Create Advisory</button>
 </div>
 
 <!-- ADVISORY TABLE -->
@@ -51,8 +51,8 @@
              {% if adv.advisory_type == 'irrigation' %}💧
              {% elif adv.advisory_type == 'pest' %}🐛
              {% elif adv.advisory_type == 'disease' %}🦠
-             {% elif adv.advisory_type == 'soil' %}🪨
-             {% else %}🌱{% endif %}
+             {% elif adv.advisory_type == 'soil' %}🌱
+             {% else %}📌{% endif %}
              {{ adv.advisory_type|title }}
            </span>
          </td>
@@ -67,7 +67,7 @@
          <td style="font-size:13px;white-space:nowrap;">{{ adv.created_at.strftime('%Y-%m-%d') }}</td>
          <td>
            <span class="badge {% if adv.is_published %}badge-green{% else %}badge-gray{% endif %}">
-             {% if adv.is_published %}✓ Published{% else %}📝 Draft{% endif %}
+             {% if adv.is_published %}✔️ Published{% else %}📝 Draft{% endif %}
            </span>
          </td>
          <td>
@@ -79,13 +79,13 @@
                data-crop="{{ adv.crop_name or 'All Crops' }}"
                data-zone="{{ adv.zone_name or 'All Zones' }}"
                data-author="{{ adv.operator_name }}">
-               👁️
+               Preview
              </button>
              <form method="POST" style="display:inline;">
                <input type="hidden" name="action" value="toggle">
                <input type="hidden" name="advisory_id" value="{{ adv.id }}">
                <button type="submit" class="btn btn-sm {% if adv.is_published %}btn-yellow{% else %}btn-primary{% endif %}" title="{{ 'Unpublish' if adv.is_published else 'Publish' }}">
-                 {{ '📤' if adv.is_published else '📢' }}
+                 {{ '📤' if adv.is_published else '📥' }}
                </button>
              </form>
              <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this advisory?')">
@@ -108,16 +108,14 @@
 <div class="modal-overlay" id="advisoryModal">
  <div class="modal" style="max-width:660px;">
    <div class="modal-header">
-     <div class="modal-title">📢 Create Advisory</div>
+     <div class="modal-title">➕ Create Advisory</div>
      <button class="modal-close" onclick="closeModal('advisoryModal')">✕</button>
    </div>
    <form method="POST">
      <input type="hidden" name="action" value="create">
      <div class="form-group">
        <label>Advisory Title *</label>
-       <input type="text" name="title" class="form-control" placeholder="e.g., Water Conservation in Dry Season" required
-              minlength="5" maxlength="255"
-              title="Advisory title must be at least 5 characters">
+       <input type="text" name="title" class="form-control" placeholder="e.g., Water Conservation in Dry Season" required minlength="5" maxlength="255" title="Advisory title must be at least 5 characters">
      </div>
      <div class="form-row">
        <div class="form-group">
@@ -127,15 +125,15 @@
            <option value="irrigation">💧 Irrigation</option>
            <option value="pest">🐛 Pest Management</option>
            <option value="disease">🦠 Disease Alert</option>
-           <option value="soil">🪨 Soil Health</option>
-           <option value="crop">🌱 Crop Management</option>
+           <option value="soil">🌱 Soil Health</option>
+           <option value="crop">🌾 Crop Management</option>
          </select>
        </div>
        <div class="form-group">
          <label>Publish Status</label>
-         <select name="is_published" class="form-control">
-           <option value="1">📢 Publish Now</option>
-           <option value="0">📝 Save as Draft</option>
+         <select name="is_published" id="publishStatus" class="form-control">
+           <option value="1">🚀 Publish Now</option>
+           <option value="0">💾 Save as Draft</option>
          </select>
        </div>
      </div>
@@ -162,11 +160,11 @@
      <div class="form-group">
        <label>Advisory Content *</label>
        <textarea name="content" class="form-control" rows="7" placeholder="Write detailed advisory content here. Include specific recommendations, timelines, and actionable steps for farmers..." required minlength="20" maxlength="5000" style="min-height:160px;" title="Advisory content must be at least 20 characters"></textarea>
-       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Min 20 characters — Max 5,000 characters</div>
+       <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Min 20 characters – Max 5,000 characters</div>
      </div>
      <div style="display:flex;gap:12px;justify-content:flex-end;">
        <button type="button" class="btn btn-outline" onclick="closeModal('advisoryModal')">Cancel</button>
-       <button type="submit" class="btn btn-primary">📢 Publish Advisory</button>
+       <button type="submit" id="submitBtn" class="btn btn-primary">🚀 Publish Advisory</button>
      </div>
    </form>
  </div>
@@ -199,8 +197,8 @@ function previewAdvisory(btn) {
  document.getElementById('prev-meta').textContent = `By ${btn.dataset.author}`;
  document.getElementById('prev-tags').innerHTML = `
    <span class="badge badge-green">${btn.dataset.type}</span>
-   <span class="badge badge-blue">🌱 ${btn.dataset.crop}</span>
-   <span class="badge badge-gray">🗺️ ${btn.dataset.zone}</span>
+   <span class="badge badge-blue">${btn.dataset.crop}</span>
+   <span class="badge badge-gray">${btn.dataset.zone}</span>
  `;
  openModal('previewModal');
 }
@@ -211,8 +209,7 @@ document.querySelectorAll('.filter-adv').forEach(btn => {
    document.querySelectorAll('.filter-adv').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
    this.classList.add('btn-primary'); this.classList.remove('btn-outline');
    const filter = this.dataset.filter;
-   document.querySelectorAll('.adv-row').forEach(row => {
-     row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
+   document.querySelectorAll('.adv-row').forEach(row => { row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
    });
  });
 });
@@ -257,5 +254,18 @@ if (advForm) {
     if (!ok) e.preventDefault();
   });
 }
+
+const publishSelect = document.getElementById("publishStatus");
+const submitBtn = document.getElementById("submitBtn");
+function updateButton() {
+  if (publishSelect.value === "1") {
+    submitBtn.innerHTML = "🚀 Publish Advisory";
+  } else {
+    submitBtn.innerHTML = "💾 Save as Draft";
+  }
+}
+updateButton();
+publishSelect.addEventListener("change", updateButton);
+
 </script>
 {% endblock %}

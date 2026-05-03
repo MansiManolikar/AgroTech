@@ -1,8 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_db
 from helpers import log_action
-from notifications import (notify_all_farmers, notify_farmers_by_crop,
-                           notify_farmers_by_zone, create_notification, get_unread_count)
+from notifications import (notify_all_farmers, notify_farmers_by_crop, notify_farmers_by_zone, create_notification, get_unread_count)
 from mongo_db import get_weather, get_latest_soil, now_ist
 from recommendation import get_crop_stage
 import json
@@ -50,9 +49,13 @@ def dashboard():
     total_zones = cursor.fetchone()['total']
     cursor.execute("SELECT COUNT(*) AS total FROM advisories WHERE is_published=1")
     total_advisories = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) AS total FROM farms WHERE COALESCE(zone_status, 'pending') = 'pending'")
+    pending_zone_approvals = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) AS total FROM irrigation_schedules WHERE COALESCE(approval_status, 'pending') = 'pending'")
+    pending_schedule_approvals = cursor.fetchone()['total']
 
     cursor.execute("""
-        SELECT f.id, f.name, f.location, f.planting_date,
+        SELECT f.id, f.name, f.location, f.planting_date, f.zone_status,
                u.name AS farmer_name,
                c.name AS crop_name, c.moisture_threshold, c.growth_duration
         FROM farms f JOIN users u ON f.user_id = u.id
@@ -76,6 +79,7 @@ def dashboard():
                COALESCE(SUM(water_amount),0) AS total_water
         FROM irrigation_schedules
         WHERE YEAR(scheduled_date) = YEAR(CURDATE())
+          AND COALESCE(approval_status, 'pending') = 'approved'
         GROUP BY month, month_num ORDER BY month_num
     """)
     water_rows = cursor.fetchall()
@@ -104,11 +108,111 @@ def dashboard():
     return render_template('operator/dashboard.html',
         total_farmers=total_farmers, total_farms=total_farms,
         total_zones=total_zones, total_advisories=total_advisories,
+        pending_zone_approvals=pending_zone_approvals,
+        pending_schedule_approvals=pending_schedule_approvals,
         farms_data=farms_data,
         months=json.dumps(months_out),
         water_usage=json.dumps(water_out),
         zone_stats=zone_stats,
         recent_logs=recent_logs)
+
+@operator_bp.route('/approvals', methods=['GET', 'POST'])
+@operator_required
+def approvals():
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action in ('approve_farm_zone', 'reject_farm_zone'):
+            farm_id = request.form.get('farm_id')
+            new_status = 'approved' if action == 'approve_farm_zone' else 'rejected'
+            cursor.execute(
+                """
+                SELECT f.name AS farm_name, f.user_id, z.name AS zone_name
+                FROM farms f
+                LEFT JOIN agro_zones z ON f.zone_id = z.id
+                WHERE f.id = %s
+                """,
+                (farm_id,),
+            )
+            farm = cursor.fetchone()
+            cursor.execute("UPDATE farms SET zone_status = %s WHERE id = %s", (new_status, farm_id))
+            conn.commit()
+            if farm:
+                create_notification(
+                    user_id=farm['user_id'],
+                    title=f'Zone Assignment {new_status.title()}',
+                    message=f'Your farm "{farm["farm_name"]}" zone assignment for "{farm["zone_name"] or "selected zone"}" was {new_status}.',
+                    ntype='success' if new_status == 'approved' else 'warning',
+                    link='/farmer/profile',
+                )
+                log_action(session['user_id'], f'{new_status}_farm_zone', f'Farm "{farm["farm_name"]}" zone assignment {new_status}')
+            flash(f'Farm zone assignment {new_status}.', 'success')
+
+        if action in ('approve_schedule', 'reject_schedule'):
+            schedule_id = request.form.get('schedule_id')
+            new_status = 'approved' if action == 'approve_schedule' else 'rejected'
+            schedule_status = 'pending' if new_status == 'approved' else 'rejected'
+            cursor.execute(
+                """
+                SELECT s.*, f.name AS farm_name, f.user_id
+                FROM irrigation_schedules s
+                JOIN farms f ON s.farm_id = f.id
+                WHERE s.id = %s
+                """,
+                (schedule_id,),
+            )
+            schedule = cursor.fetchone()
+            cursor.execute(
+                "UPDATE irrigation_schedules SET approval_status = %s, status = %s WHERE id = %s",
+                (new_status, schedule_status, schedule_id),
+            )
+            conn.commit()
+            if schedule:
+                create_notification(
+                    user_id=schedule['user_id'],
+                    title=f'Irrigation Schedule {new_status.title()}',
+                    message=(
+                        f'Your irrigation schedule for "{schedule["farm_name"]}" on '
+                        f'{schedule["scheduled_date"]} at {schedule["scheduled_time"]} was {new_status}.'
+                    ),
+                    ntype='success' if new_status == 'approved' else 'warning',
+                    link=f'/farmer/schedule?farm_id={schedule["farm_id"]}',
+                )
+                log_action(session['user_id'], f'{new_status}_schedule', f'Irrigation schedule #{schedule_id} {new_status}')
+            flash(f'Irrigation schedule {new_status}.', 'success')
+
+        return redirect(url_for('operator.approvals'))
+
+    cursor.execute(
+        """
+        SELECT f.*, u.name AS farmer_name, u.email, c.name AS crop_name, z.name AS zone_name
+        FROM farms f
+        JOIN users u ON f.user_id = u.id
+        LEFT JOIN crops c ON f.crop_id = c.id
+        LEFT JOIN agro_zones z ON f.zone_id = z.id
+        ORDER BY FIELD(COALESCE(f.zone_status, 'pending'), 'pending', 'rejected', 'approved'), f.id DESC
+        """
+    )
+    farms = cursor.fetchall()
+
+    cursor.execute(
+        """
+        SELECT s.*, f.name AS farm_name, f.location, u.name AS farmer_name, c.name AS crop_name
+        FROM irrigation_schedules s
+        JOIN farms f ON s.farm_id = f.id
+        JOIN users u ON f.user_id = u.id
+        LEFT JOIN crops c ON f.crop_id = c.id
+        ORDER BY FIELD(COALESCE(s.approval_status, 'pending'), 'pending', 'rejected', 'approved'),
+                 s.scheduled_date DESC, s.scheduled_time DESC
+        """
+    )
+    schedules = cursor.fetchall()
+    conn.close()
+
+    return render_template('operator/approvals.html', farms=farms, schedules=schedules)
 
 @operator_bp.route('/farmers')
 @operator_required
@@ -118,7 +222,7 @@ def farmers():
     cursor.execute("""
         SELECT u.id, u.name, u.email, u.phone, u.created_at,
                f.id AS farm_id, f.name AS farm_name, f.location, f.area,
-               f.planting_date, f.zone_id,
+               f.planting_date, f.zone_id, f.zone_status,
                c.name AS crop_name, c.moisture_threshold, c.growth_duration,
                z.name AS zone_name
         FROM users u

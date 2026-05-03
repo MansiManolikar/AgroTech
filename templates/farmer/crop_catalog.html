@@ -8,10 +8,7 @@
 <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px;flex-wrap:wrap;">
   <input type="text" id="searchInput" placeholder="🔍 Search crops..."
          onkeyup="filterCrops()"
-         style="padding:10px 16px;border:1px solid var(--border);border-radius:10px;
-                font-size:14px;flex:1;min-width:200px;outline:none;
-                transition:border 0.2s;" onfocus="this.style.borderColor='#66bb6a'"
-                onblur="this.style.borderColor='var(--border)'">
+         style="padding:10px 16px;border:1px solid var(--border);border-radius:10px; font-size:14px;flex:1;min-width:200px;outline:none; transition:border 0.2s;" onfocus="this.style.borderColor='#66bb6a'" onblur="this.style.borderColor='var(--border)'">
   <div style="font-size:13px;color:var(--text-light);">
     {{ crops|length }} crop{% if crops|length != 1 %}s{% endif %} in catalog
   </div>
@@ -24,8 +21,7 @@
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:10px;padding-top:4px;">
     {% for z in zones %}
-    <div style="background:#fff;border:1px solid #c8e6c9;border-radius:10px;padding:10px 16px;
-                min-width:200px;flex:1;">
+    <div style="background:#fff;border:1px solid #c8e6c9;border-radius:10px;padding:10px 16px; min-width:200px;flex:1;">
       <div style="font-weight:700;font-size:13px;color:#2e7d32;margin-bottom:4px;">{{ z.name }}</div>
       <div style="font-size:11px;color:#777;margin-bottom:2px;">📍 {{ z.region }}</div>
       <div style="font-size:11px;color:#777;margin-bottom:2px;">🌡️ {{ z.climate }}</div>
@@ -42,9 +38,7 @@
 
 {% for crop in crops %}
 <div class="crop-card" data-name="{{ crop.name|lower }}"
-     style="background:#fff;border:1px solid #e8e8e8;border-radius:16px;overflow:hidden;
-            box-shadow:0 2px 12px rgba(0,0,0,0.05);transition:box-shadow 0.2s;
-            display:flex;flex-direction:column;"
+     style="background:#fff;border:1px solid #e8e8e8;border-radius:16px;overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.05);transition:box-shadow 0.2s; display:flex;flex-direction:column;"
      onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)'"
      onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.05)'">
 
@@ -57,8 +51,7 @@
         <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;">{{ crop.variety }}</div>
         {% endif %}
       </div>
-      <div style="width:52px;height:52px;background:rgba(255,255,255,0.15);border-radius:12px;
-                  display:flex;align-items:center;justify-content:center;font-size:26px;">
+      <div style="width:52px;height:52px;background:rgba(255,255,255,0.15);border-radius:12px; display:flex;align-items:center;justify-content:center;font-size:26px;">
         🌱
       </div>
     </div>
@@ -72,7 +65,7 @@
       <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
       <div style="text-align:center;">
         <div style="font-size:18px;font-weight:800;color:#fff;">{{ crop.water_requirement|int if crop.water_requirement else '—' }}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600;">MM WATER</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600;">MM WATER PER DAY</div>
       </div>
       <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
       <div style="text-align:center;">
@@ -99,9 +92,7 @@
       <div style="display:flex;flex-direction:column;gap:8px;">
         {% for stage in crop.stages_list %}
         <div style="display:flex;gap:10px;align-items:flex-start;">
-          <div style="width:22px;height:22px;border-radius:50%;background:#e8f5e9;border:2px solid #66bb6a;
-                      display:flex;align-items:center;justify-content:center;font-size:10px;
-                      font-weight:700;color:#2e7d32;flex-shrink:0;margin-top:1px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:#e8f5e9;border:2px solid #66bb6a; display:flex;align-items:center;justify-content:center;font-size:10px; font-weight:700;color:#2e7d32;flex-shrink:0;margin-top:1px;">
             {{ loop.index }}
           </div>
           <div style="font-size:12px;color:#444;line-height:1.6;">{{ stage }}</div>
@@ -118,41 +109,12 @@
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
         {% for zone in crop.suggested_zones %}
-        <span style="background:#fff;border:1px solid #a5d6a7;color:#2e7d32;
-                     font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;">
+        <span style="background:#fff;border:1px solid #a5d6a7;color:#2e7d32; font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;">
           {{ zone }}
         </span>
         {% endfor %}
       </div>
     </div>
-
-    <!-- Requirements summary — pinned to bottom -->
-    <div style="margin-top:auto;padding-top:14px;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div style="background:#f9f9f9;border-radius:8px;padding:10px 12px;">
-        <div style="font-size:10px;color:#999;font-weight:600;letter-spacing:0.5px;">WATER NEED</div>
-        <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:2px;">
-          {{ crop.water_requirement|int if crop.water_requirement else '—' }} mm
-        </div>
-      </div>
-      <div style="background:#f9f9f9;border-radius:8px;padding:10px 12px;">
-        <div style="font-size:10px;color:#999;font-weight:600;letter-spacing:0.5px;">MOISTURE THRESHOLD</div>
-        <div style="font-size:14px;font-weight:700;color:#e65100;margin-top:2px;">
-          {{ crop.moisture_threshold|int if crop.moisture_threshold else '—' }}%
-        </div>
-      </div>
-    </div>
-
-    </div>
-    <!-- CTA: Select this crop -->
-    <a href="{{ url_for('farmer.profile') }}"
-       style="display:block;margin-top:14px;text-align:center;background:#2e7d32;color:#fff;
-              padding:10px;border-radius:10px;font-size:13px;font-weight:600;
-              text-decoration:none;transition:background 0.2s;"
-       onmouseover="this.style.background='#1b5e20'"
-       onmouseout="this.style.background='#2e7d32'">
-      Select {{ crop.name }} for My Farm →
-    </a>
   </div>
 
 </div>

@@ -33,9 +33,20 @@ def init_db():
        password TEXT,
        role VARCHAR(50),
        phone VARCHAR(20),
+       security_question VARCHAR(255),
+       security_answer VARCHAR(255),
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    )
    """)
+
+   # Add columns if upgrading existing DB
+   for col, defn in [
+       ('security_question', 'VARCHAR(255)'),
+       ('security_answer',   'VARCHAR(255)')
+   ]:
+       c.execute("SHOW COLUMNS FROM users LIKE %s", (col,))
+       if not c.fetchone():
+           c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
 
    c.execute("""
    CREATE TABLE IF NOT EXISTS agro_zones (
@@ -73,9 +84,15 @@ def init_db():
        zone_id INT,
        soil_type VARCHAR(255),
        irrigation_type VARCHAR(255),
-       planting_date DATE
+       planting_date DATE,
+       zone_status VARCHAR(50) DEFAULT 'pending'
    )
    """)
+
+   c.execute("SHOW COLUMNS FROM farms LIKE 'zone_status'")
+   if not c.fetchone():
+       c.execute("ALTER TABLE farms ADD COLUMN zone_status VARCHAR(50) DEFAULT 'pending'")
+   c.execute("UPDATE farms SET zone_status = 'pending' WHERE zone_status IS NULL")
 
    c.execute("""
    CREATE TABLE IF NOT EXISTS alerts (
@@ -112,6 +129,7 @@ def init_db():
        duration_minutes INT,
        water_amount FLOAT,
        status VARCHAR(50),
+       approval_status VARCHAR(50) DEFAULT 'pending',
        reason TEXT,
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    )
@@ -121,6 +139,11 @@ def init_db():
    if not c.fetchone():
        c.execute("ALTER TABLE irrigation_schedules ADD COLUMN scheduled_time TIME AFTER scheduled_date")
 
+   c.execute("SHOW COLUMNS FROM irrigation_schedules LIKE 'approval_status'")
+   if not c.fetchone():
+       c.execute("ALTER TABLE irrigation_schedules ADD COLUMN approval_status VARCHAR(50) DEFAULT 'pending' AFTER status")
+   c.execute("UPDATE irrigation_schedules SET approval_status = 'pending' WHERE approval_status IS NULL")
+
    c.execute("""
    CREATE TABLE IF NOT EXISTS audit_logs (
        id INT AUTO_INCREMENT PRIMARY KEY,
@@ -129,18 +152,6 @@ def init_db():
        details TEXT,
        ip_address VARCHAR(50),
        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   )
-   """)
-
-   c.execute("""
-   CREATE TABLE IF NOT EXISTS password_reset_tokens (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       user_id INT NOT NULL,
-       token VARCHAR(255) NOT NULL UNIQUE,
-       expires_at DATETIME NOT NULL,
-       used BOOLEAN DEFAULT FALSE,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
    )
    """)
 

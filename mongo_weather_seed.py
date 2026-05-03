@@ -1,223 +1,783 @@
 from __future__ import annotations
-
 import os
-
 from pymongo import MongoClient
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
-MONGO_DB = "agritech"
+MONGO_URI        = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_DB         = "agritech"
 MONGO_COLLECTION = "weather_data"
 
+SUPPORTED_DISTRICTS = [
+    # Rice
+    "Kuttanad", "Thanjavur", "Udupi", "Nagapattinam", "Dakshina Kannada",
+    # Sugarcane
+    "Kolhapur", "Mandya", "Satara", "Belagavi", "Coimbatore",
+    # Soybean
+    "Indore", "Nagpur", "Dharwad", "Ujjain", "Akola",
+]
+
 WEATHER_RECORDS: list[dict] = [
+    # Rice — Humid / Coastal / High Rainfall
+    # Kuttanad, Kerala
+    # day=-2 (day before yesterday)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 0, "weather": {"temp_c": 27.0, "feelslike_c": 33.6, "humidity": 92, "wind_kph": 3.3, "precip_mm": 0.0, "uv": 2.5, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 1, "weather": {"temp_c": 31.7, "feelslike_c": 39.2, "humidity": 69, "wind_kph": 2.8, "precip_mm": 0.0, "uv": 8.2, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 2, "weather": {"temp_c": 32.9, "feelslike_c": 40.3, "humidity": 64, "wind_kph": 6.6, "precip_mm": 2.0, "uv": 9.0, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 3, "weather": {"temp_c": 29.2, "feelslike_c": 35.2, "humidity": 78, "wind_kph": 5.4, "precip_mm": 4.5, "uv": 6.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 4, "weather": {"temp_c": 26.3, "feelslike_c": 32.8, "humidity": 96, "wind_kph": 4.5, "precip_mm": 0.7, "uv": 0.1, "condition": "Patchy rain nearby"}}, # slot 4 (18-21)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 5, "weather": {"temp_c": 25.3, "feelslike_c": 31.0, "humidity": 97, "wind_kph": 6.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 6, "weather": {"temp_c": 24.7, "feelslike_c": 30.4, "humidity": 97, "wind_kph": 3.9, "precip_mm": 2.5, "uv": 0.0, "condition": "Patchy rain nearby"}}, # slot 6 (00-03)
+    {"state": "Kerala", "district": "Kuttanad", "day": -2, "slot": 7, "weather": {"temp_c": 24.9, "feelslike_c": 30.9, "humidity": 98, "wind_kph": 2.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 0, "weather": {"temp_c": 26.8, "feelslike_c": 33.5, "humidity": 92, "wind_kph": 1.6, "precip_mm": 0.0, "uv": 2.1, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 1, "weather": {"temp_c": 31.3, "feelslike_c": 37.6, "humidity": 70, "wind_kph": 7.2, "precip_mm": 0.3, "uv": 7.5, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 2, "weather": {"temp_c": 32.6, "feelslike_c": 39.0, "humidity": 63, "wind_kph": 11.5, "precip_mm": 0.3, "uv": 8.4, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 3, "weather": {"temp_c": 29.8, "feelslike_c": 34.9, "humidity": 73, "wind_kph": 9.4, "precip_mm": 0.6, "uv": 6.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 4, "weather": {"temp_c": 28.2, "feelslike_c": 34.5, "humidity": 85, "wind_kph": 4.4, "precip_mm": 0.0, "uv": 0.2, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 5, "weather": {"temp_c": 27.2, "feelslike_c": 33.9, "humidity": 91, "wind_kph": 2.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 6, "weather": {"temp_c": 24.7, "feelslike_c": 30.2, "humidity": 98, "wind_kph": 4.9, "precip_mm": 0.3, "uv": 0.0, "condition": "Patchy rain nearby"}}, # slot 6 (00-03)
+    {"state": "Kerala", "district": "Kuttanad", "day": -1, "slot": 7, "weather": {"temp_c": 24.7, "feelslike_c": 30.6, "humidity": 97, "wind_kph": 1.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 0, "weather": {"temp_c": 28.1, "feelslike_c": 34.3, "humidity": 85, "wind_kph": 4.9, "precip_mm": 0.0, "uv": 2.5, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 1, "weather": {"temp_c": 31.9, "feelslike_c": 38.4, "humidity": 69, "wind_kph": 8.3, "precip_mm": 0.2, "uv": 8.2, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 2, "weather": {"temp_c": 30.0, "feelslike_c": 36.3, "humidity": 75, "wind_kph": 6.8, "precip_mm": 3.6, "uv": 8.4, "condition": "Moderate rain"}}, # slot 2 (12-15)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 3, "weather": {"temp_c": 27.2, "feelslike_c": 33.3, "humidity": 87, "wind_kph": 4.5, "precip_mm": 4.9, "uv": 6.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 4, "weather": {"temp_c": 26.4, "feelslike_c": 32.6, "humidity": 93, "wind_kph": 3.8, "precip_mm": 0.0, "uv": 0.3, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 5, "weather": {"temp_c": 25.7, "feelslike_c": 32.0, "humidity": 96, "wind_kph": 2.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 6, "weather": {"temp_c": 26.1, "feelslike_c": 32.9, "humidity": 97, "wind_kph": 2.3, "precip_mm": 0.9, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Kerala", "district": "Kuttanad", "day": 0, "slot": 7, "weather": {"temp_c": 25.9, "feelslike_c": 32.2, "humidity": 95, "wind_kph": 2.8, "precip_mm": 0.6, "uv": 0.0, "condition": "Patchy rain nearby"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 0, "weather": {"temp_c": 25.8, "feelslike_c": 32.2, "humidity": 95, "wind_kph": 2.5, "precip_mm": 0.0, "uv": 2.3, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 1, "weather": {"temp_c": 30.1, "feelslike_c": 35.6, "humidity": 75, "wind_kph": 9.2, "precip_mm": 0.1, "uv": 6.8, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 2, "weather": {"temp_c": 32.1, "feelslike_c": 38.2, "humidity": 67, "wind_kph": 11.9, "precip_mm": 1.1, "uv": 5.7, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 3, "weather": {"temp_c": 30.7, "feelslike_c": 35.4, "humidity": 71, "wind_kph": 12.5, "precip_mm": 0.6, "uv": 2.7, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 4, "weather": {"temp_c": 27.2, "feelslike_c": 32.8, "humidity": 87, "wind_kph": 6.9, "precip_mm": 0.0, "uv": 0.3, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 5, "weather": {"temp_c": 25.4, "feelslike_c": 30.9, "humidity": 93, "wind_kph": 5.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 6, "weather": {"temp_c": 25.3, "feelslike_c": 31.6, "humidity": 96, "wind_kph": 1.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Kerala", "district": "Kuttanad", "day": 1, "slot": 7, "weather": {"temp_c": 25.0, "feelslike_c": 31.1, "humidity": 97, "wind_kph": 2.2, "precip_mm": 4.7, "uv": 0.0, "condition": "Moderate rain"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 0, "weather": {"temp_c": 27.1, "feelslike_c": 33.0, "humidity": 86, "wind_kph": 3.2, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 1, "weather": {"temp_c": 31.9, "feelslike_c": 37.9, "humidity": 64, "wind_kph": 6.8, "precip_mm": 0.0, "uv": 8.2, "condition": "Partly cloudy"}}, # slot 1 (09-12)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 2, "weather": {"temp_c": 31.5, "feelslike_c": 37.3, "humidity": 66, "wind_kph": 10.6, "precip_mm": 0.4, "uv": 9.0, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 3, "weather": {"temp_c": 29.2, "feelslike_c": 34.9, "humidity": 77, "wind_kph": 5.9, "precip_mm": 3.7, "uv": 6.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 4, "weather": {"temp_c": 26.7, "feelslike_c": 32.3, "humidity": 89, "wind_kph": 6.9, "precip_mm": 0.0, "uv": 0.3, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 5, "weather": {"temp_c": 25.9, "feelslike_c": 31.6, "humidity": 93, "wind_kph": 4.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 6, "weather": {"temp_c": 24.8, "feelslike_c": 30.6, "humidity": 95, "wind_kph": 1.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Kerala", "district": "Kuttanad", "day": 2, "slot": 7, "weather": {"temp_c": 24.9, "feelslike_c": 30.5, "humidity": 95, "wind_kph": 2.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
 
-    # ── Kuttanad, Kerala (hot & humid, heavy monsoon) ──────────────────────
-    {"state": "Kerala", "district": "Kuttanad", "slot": 0,  # 06-09 ↑
-     "weather": {"temp_c": 26.5, "feelslike_c": 30.2, "humidity": 88, "wind_kph": 10.0, "precip_mm": 1.5, "uv": 3.0, "condition": "Patchy rain nearby"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 1,  # 09-12 ↑
-     "weather": {"temp_c": 29.8, "feelslike_c": 34.5, "humidity": 82, "wind_kph": 12.0, "precip_mm": 2.0, "uv": 6.0, "condition": "Partly cloudy"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 2,  # 12-15 ↑ peak
-     "weather": {"temp_c": 32.1, "feelslike_c": 37.8, "humidity": 75, "wind_kph": 14.0, "precip_mm": 0.5, "uv": 9.0, "condition": "Sunny"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 3,  # 15-18 ↓
-     "weather": {"temp_c": 31.0, "feelslike_c": 36.2, "humidity": 78, "wind_kph": 13.0, "precip_mm": 3.5, "uv": 6.0, "condition": "Moderate rain"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 4,  # 18-21 ↓
-     "weather": {"temp_c": 28.5, "feelslike_c": 32.8, "humidity": 84, "wind_kph": 11.0, "precip_mm": 5.0, "uv": 1.0, "condition": "Heavy rain"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 5,  # 21-00 ↓
-     "weather": {"temp_c": 26.8, "feelslike_c": 30.5, "humidity": 89, "wind_kph": 9.0,  "precip_mm": 2.5, "uv": 0.0, "condition": "Patchy rain nearby"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 6,  # 00-03 ↓ coldest
-     "weather": {"temp_c": 25.2, "feelslike_c": 28.8, "humidity": 92, "wind_kph": 8.0,  "precip_mm": 1.0, "uv": 0.0, "condition": "Overcast"}},
-    {"state": "Kerala", "district": "Kuttanad", "slot": 7,  # 03-06 ↑
-     "weather": {"temp_c": 25.8, "feelslike_c": 29.4, "humidity": 90, "wind_kph": 9.5,  "precip_mm": 1.2, "uv": 0.5, "condition": "Mist"}},
+    # Thanjavur, Tamil Nadu
+    # day=-2 (day before yesterday)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 0, "weather": {"temp_c": 29.9, "feelslike_c": 34.9, "humidity": 75, "wind_kph": 11.1, "precip_mm": 0.0, "uv": 3.0, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 1, "weather": {"temp_c": 34.8, "feelslike_c": 40.1, "humidity": 51, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 2, "weather": {"temp_c": 37.4, "feelslike_c": 41.9, "humidity": 39, "wind_kph": 12.2, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 3, "weather": {"temp_c": 34.5, "feelslike_c": 38.3, "humidity": 57, "wind_kph": 19.8, "precip_mm": 0.0, "uv": 5.8, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 4, "weather": {"temp_c": 30.8, "feelslike_c": 34.5, "humidity": 71, "wind_kph": 21.1, "precip_mm": 0.0, "uv": 0.3, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 5, "weather": {"temp_c": 29.7, "feelslike_c": 33.8, "humidity": 74, "wind_kph": 16.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 6, "weather": {"temp_c": 28.5, "feelslike_c": 32.5, "humidity": 77, "wind_kph": 15.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -2, "slot": 7, "weather": {"temp_c": 27.9, "feelslike_c": 32.5, "humidity": 81, "wind_kph": 11.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 0, "weather": {"temp_c": 29.4, "feelslike_c": 34.7, "humidity": 75, "wind_kph": 8.0, "precip_mm": 0.0, "uv": 1.6, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 1, "weather": {"temp_c": 34.0, "feelslike_c": 39.0, "humidity": 54, "wind_kph": 9.1, "precip_mm": 0.0, "uv": 7.5, "condition": "Overcast"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 2, "weather": {"temp_c": 36.4, "feelslike_c": 41.1, "humidity": 43, "wind_kph": 11.2, "precip_mm": 0.1, "uv": 8.2, "condition": "Overcast"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 3, "weather": {"temp_c": 34.4, "feelslike_c": 38.0, "humidity": 53, "wind_kph": 14.6, "precip_mm": 0.0, "uv": 5.2, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 4, "weather": {"temp_c": 31.3, "feelslike_c": 34.9, "humidity": 67, "wind_kph": 18.2, "precip_mm": 0.0, "uv": 0.3, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 5, "weather": {"temp_c": 29.9, "feelslike_c": 34.1, "humidity": 74, "wind_kph": 15.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 6, "weather": {"temp_c": 28.9, "feelslike_c": 33.3, "humidity": 77, "wind_kph": 14.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": -1, "slot": 7, "weather": {"temp_c": 27.9, "feelslike_c": 33.2, "humidity": 85, "wind_kph": 10.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 0, "weather": {"temp_c": 30.1, "feelslike_c": 35.3, "humidity": 77, "wind_kph": 11.9, "precip_mm": 0.0, "uv": 2.6, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 1, "weather": {"temp_c": 35.0, "feelslike_c": 40.0, "humidity": 51, "wind_kph": 12.3, "precip_mm": 0.0, "uv": 8.6, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 2, "weather": {"temp_c": 37.1, "feelslike_c": 42.2, "humidity": 43, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 9.2, "condition": "Overcast"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 3, "weather": {"temp_c": 33.8, "feelslike_c": 38.1, "humidity": 60, "wind_kph": 16.8, "precip_mm": 1.0, "uv": 6.0, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 4, "weather": {"temp_c": 30.8, "feelslike_c": 34.7, "humidity": 65, "wind_kph": 12.6, "precip_mm": 0.0, "uv": 0.1, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 5, "weather": {"temp_c": 28.6, "feelslike_c": 32.0, "humidity": 67, "wind_kph": 10.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 6, "weather": {"temp_c": 28.6, "feelslike_c": 33.7, "humidity": 80, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 0, "slot": 7, "weather": {"temp_c": 27.9, "feelslike_c": 33.3, "humidity": 87, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 0, "weather": {"temp_c": 29.4, "feelslike_c": 35.1, "humidity": 79, "wind_kph": 8.6, "precip_mm": 0.0, "uv": 2.8, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 1, "weather": {"temp_c": 35.1, "feelslike_c": 39.8, "humidity": 49, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 8.4, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 2, "weather": {"temp_c": 38.2, "feelslike_c": 44.0, "humidity": 38, "wind_kph": 6.3, "precip_mm": 0.0, "uv": 8.8, "condition": "Overcast"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 3, "weather": {"temp_c": 35.5, "feelslike_c": 38.9, "humidity": 52, "wind_kph": 17.5, "precip_mm": 0.0, "uv": 5.3, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 4, "weather": {"temp_c": 31.1, "feelslike_c": 34.8, "humidity": 71, "wind_kph": 21.6, "precip_mm": 0.0, "uv": 0.2, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 5, "weather": {"temp_c": 29.7, "feelslike_c": 33.6, "humidity": 75, "wind_kph": 18.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 6, "weather": {"temp_c": 27.9, "feelslike_c": 32.2, "humidity": 75, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 1, "slot": 7, "weather": {"temp_c": 27.4, "feelslike_c": 32.7, "humidity": 85, "wind_kph": 7.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 0, "weather": {"temp_c": 29.6, "feelslike_c": 35.4, "humidity": 81, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 3.0, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 1, "weather": {"temp_c": 34.4, "feelslike_c": 41.1, "humidity": 54, "wind_kph": 3.7, "precip_mm": 0.0, "uv": 8.7, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 2, "weather": {"temp_c": 37.2, "feelslike_c": 43.4, "humidity": 43, "wind_kph": 6.1, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 3, "weather": {"temp_c": 34.6, "feelslike_c": 38.0, "humidity": 54, "wind_kph": 18.4, "precip_mm": 0.0, "uv": 6.0, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 4, "weather": {"temp_c": 29.3, "feelslike_c": 33.3, "humidity": 72, "wind_kph": 13.6, "precip_mm": 6.4, "uv": 0.2, "condition": "Patchy rain nearby"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 5, "weather": {"temp_c": 26.8, "feelslike_c": 31.6, "humidity": 81, "wind_kph": 5.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 6, "weather": {"temp_c": 28.3, "feelslike_c": 33.8, "humidity": 86, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Thanjavur", "day": 2, "slot": 7, "weather": {"temp_c": 27.8, "feelslike_c": 34.0, "humidity": 92, "wind_kph": 10.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
 
-    # ── Thanjavur, Tamil Nadu (hot semi-arid, low rain) ────────────────────
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 0,
-     "weather": {"temp_c": 27.0, "feelslike_c": 30.5, "humidity": 72, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 3.5, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 1,
-     "weather": {"temp_c": 31.5, "feelslike_c": 35.8, "humidity": 66, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 7.5, "condition": "Sunny"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 2,
-     "weather": {"temp_c": 35.8, "feelslike_c": 40.2, "humidity": 58, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 10.0, "condition": "Sunny"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 3,
-     "weather": {"temp_c": 34.0, "feelslike_c": 38.5, "humidity": 62, "wind_kph": 15.0, "precip_mm": 0.5, "uv": 6.5, "condition": "Partly cloudy"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 4,
-     "weather": {"temp_c": 31.2, "feelslike_c": 35.0, "humidity": 68, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 5,
-     "weather": {"temp_c": 29.0, "feelslike_c": 32.8, "humidity": 74, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 6,
-     "weather": {"temp_c": 26.8, "feelslike_c": 30.2, "humidity": 78, "wind_kph": 9.0,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Thanjavur", "slot": 7,
-     "weather": {"temp_c": 27.5, "feelslike_c": 31.0, "humidity": 76, "wind_kph": 10.5, "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
+    # Udupi, Karnataka
+    # day=-2 (day before yesterday)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 0, "weather": {"temp_c": 30.4, "feelslike_c": 36.6, "humidity": 74, "wind_kph": 4.5, "precip_mm": 0.0, "uv": 2.4, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 1, "weather": {"temp_c": 33.8, "feelslike_c": 38.4, "humidity": 54, "wind_kph": 11.9, "precip_mm": 0.0, "uv": 4.8, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 2, "weather": {"temp_c": 33.5, "feelslike_c": 38.5, "humidity": 56, "wind_kph": 14.4, "precip_mm": 1.6, "uv": 8.8, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 3, "weather": {"temp_c": 32.3, "feelslike_c": 37.2, "humidity": 65, "wind_kph": 12.6, "precip_mm": 0.0, "uv": 6.5, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 4, "weather": {"temp_c": 30.8, "feelslike_c": 36.5, "humidity": 72, "wind_kph": 8.2, "precip_mm": 0.0, "uv": 0.5, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 5, "weather": {"temp_c": 29.6, "feelslike_c": 36.3, "humidity": 79, "wind_kph": 3.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 6, "weather": {"temp_c": 25.5, "feelslike_c": 31.1, "humidity": 96, "wind_kph": 7.5, "precip_mm": 14.9, "uv": 0.0, "condition": "Moderate rain"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Udupi", "day": -2, "slot": 7, "weather": {"temp_c": 26.8, "feelslike_c": 32.7, "humidity": 91, "wind_kph": 5.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 0, "weather": {"temp_c": 28.9, "feelslike_c": 35.1, "humidity": 80, "wind_kph": 4.0, "precip_mm": 0.2, "uv": 2.4, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 1, "weather": {"temp_c": 32.1, "feelslike_c": 38.1, "humidity": 65, "wind_kph": 8.2, "precip_mm": 0.3, "uv": 7.8, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 2, "weather": {"temp_c": 32.4, "feelslike_c": 37.9, "humidity": 65, "wind_kph": 13.7, "precip_mm": 0.4, "uv": 8.8, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 3, "weather": {"temp_c": 31.5, "feelslike_c": 36.2, "humidity": 69, "wind_kph": 16.0, "precip_mm": 0.2, "uv": 6.5, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 4, "weather": {"temp_c": 30.4, "feelslike_c": 35.6, "humidity": 74, "wind_kph": 10.8, "precip_mm": 0.0, "uv": 0.6, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 5, "weather": {"temp_c": 29.2, "feelslike_c": 35.3, "humidity": 80, "wind_kph": 5.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 6, "weather": {"temp_c": 28.1, "feelslike_c": 35.0, "humidity": 89, "wind_kph": 4.4, "precip_mm": 0.1, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Udupi", "day": -1, "slot": 7, "weather": {"temp_c": 27.1, "feelslike_c": 33.4, "humidity": 91, "wind_kph": 5.3, "precip_mm": 0.1, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 0, "weather": {"temp_c": 28.6, "feelslike_c": 35.2, "humidity": 84, "wind_kph": 3.5, "precip_mm": 0.1, "uv": 2.4, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 1, "weather": {"temp_c": 33.1, "feelslike_c": 38.3, "humidity": 57, "wind_kph": 9.4, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 2, "weather": {"temp_c": 33.3, "feelslike_c": 37.8, "humidity": 54, "wind_kph": 17.5, "precip_mm": 0.0, "uv": 9.1, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 3, "weather": {"temp_c": 32.0, "feelslike_c": 35.4, "humidity": 59, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 6.5, "condition": "Partly cloudy"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 4, "weather": {"temp_c": 29.8, "feelslike_c": 34.4, "humidity": 71, "wind_kph": 11.1, "precip_mm": 0.0, "uv": 0.6, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 5, "weather": {"temp_c": 29.0, "feelslike_c": 34.6, "humidity": 75, "wind_kph": 3.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 6, "weather": {"temp_c": 28.2, "feelslike_c": 34.9, "humidity": 87, "wind_kph": 4.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Udupi", "day": 0, "slot": 7, "weather": {"temp_c": 27.1, "feelslike_c": 34.1, "humidity": 93, "wind_kph": 2.7, "precip_mm": 0.3, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 0, "weather": {"temp_c": 28.4, "feelslike_c": 34.1, "humidity": 77, "wind_kph": 2.6, "precip_mm": 0.0, "uv": 1.9, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 1, "weather": {"temp_c": 32.9, "feelslike_c": 37.6, "humidity": 55, "wind_kph": 9.8, "precip_mm": 0.0, "uv": 8.2, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 2, "weather": {"temp_c": 33.2, "feelslike_c": 37.6, "humidity": 54, "wind_kph": 17.6, "precip_mm": 0.0, "uv": 9.1, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 3, "weather": {"temp_c": 31.8, "feelslike_c": 35.1, "humidity": 59, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 4, "weather": {"temp_c": 30.1, "feelslike_c": 34.0, "humidity": 66, "wind_kph": 11.2, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 5, "weather": {"temp_c": 29.5, "feelslike_c": 34.1, "humidity": 70, "wind_kph": 7.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 6, "weather": {"temp_c": 28.1, "feelslike_c": 34.0, "humidity": 79, "wind_kph": 1.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Udupi", "day": 1, "slot": 7, "weather": {"temp_c": 27.2, "feelslike_c": 33.0, "humidity": 82, "wind_kph": 1.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 0, "weather": {"temp_c": 28.8, "feelslike_c": 33.9, "humidity": 72, "wind_kph": 3.8, "precip_mm": 0.0, "uv": 1.0, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 1, "weather": {"temp_c": 33.3, "feelslike_c": 38.1, "humidity": 54, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 3.6, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 2, "weather": {"temp_c": 33.3, "feelslike_c": 38.0, "humidity": 55, "wind_kph": 17.6, "precip_mm": 0.0, "uv": 9.1, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 3, "weather": {"temp_c": 32.0, "feelslike_c": 35.6, "humidity": 60, "wind_kph": 14.4, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 4, "weather": {"temp_c": 30.1, "feelslike_c": 34.3, "humidity": 68, "wind_kph": 10.1, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 5, "weather": {"temp_c": 29.2, "feelslike_c": 34.4, "humidity": 72, "wind_kph": 4.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 6, "weather": {"temp_c": 28.8, "feelslike_c": 33.8, "humidity": 72, "wind_kph": 4.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Udupi", "day": 2, "slot": 7, "weather": {"temp_c": 27.7, "feelslike_c": 32.9, "humidity": 78, "wind_kph": 3.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
 
-    # ── Udupi, Karnataka (coastal, heavy monsoon) ──────────────────────────
-    {"state": "Karnataka", "district": "Udupi", "slot": 0,
-     "weather": {"temp_c": 25.0, "feelslike_c": 28.5, "humidity": 88, "wind_kph": 14.0, "precip_mm": 2.0, "uv": 2.5, "condition": "Mist"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 1,
-     "weather": {"temp_c": 28.2, "feelslike_c": 32.0, "humidity": 83, "wind_kph": 16.0, "precip_mm": 3.5, "uv": 5.5, "condition": "Patchy rain nearby"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 2,
-     "weather": {"temp_c": 31.0, "feelslike_c": 35.8, "humidity": 76, "wind_kph": 18.0, "precip_mm": 1.0, "uv": 8.0, "condition": "Partly cloudy"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 3,
-     "weather": {"temp_c": 29.5, "feelslike_c": 34.0, "humidity": 80, "wind_kph": 17.0, "precip_mm": 6.0, "uv": 5.0, "condition": "Moderate rain"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 4,
-     "weather": {"temp_c": 27.0, "feelslike_c": 30.8, "humidity": 86, "wind_kph": 15.0, "precip_mm": 8.5, "uv": 0.5, "condition": "Heavy rain"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 5,
-     "weather": {"temp_c": 25.5, "feelslike_c": 29.0, "humidity": 90, "wind_kph": 12.0, "precip_mm": 4.0, "uv": 0.0, "condition": "Patchy rain nearby"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 6,
-     "weather": {"temp_c": 24.2, "feelslike_c": 27.5, "humidity": 93, "wind_kph": 10.0, "precip_mm": 2.5, "uv": 0.0, "condition": "Overcast"}},
-    {"state": "Karnataka", "district": "Udupi", "slot": 7,
-     "weather": {"temp_c": 24.8, "feelslike_c": 28.2, "humidity": 91, "wind_kph": 12.0, "precip_mm": 1.8, "uv": 0.5, "condition": "Mist"}},
+    # Nagapattinam, Tamil Nadu
+    # day=-2 (day before yesterday)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 0, "weather": {"temp_c": 30.1, "feelslike_c": 35.0, "humidity": 73, "wind_kph": 10.7, "precip_mm": 0.0, "uv": 3.0, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 1, "weather": {"temp_c": 35.3, "feelslike_c": 40.3, "humidity": 50, "wind_kph": 11.7, "precip_mm": 0.0, "uv": 8.7, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 2, "weather": {"temp_c": 37.2, "feelslike_c": 42.2, "humidity": 43, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 9.2, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 3, "weather": {"temp_c": 35.0, "feelslike_c": 38.4, "humidity": 51, "wind_kph": 17.4, "precip_mm": 0.0, "uv": 5.9, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 4, "weather": {"temp_c": 31.3, "feelslike_c": 35.2, "humidity": 68, "wind_kph": 17.9, "precip_mm": 0.0, "uv": 0.2, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 5, "weather": {"temp_c": 30.3, "feelslike_c": 34.8, "humidity": 75, "wind_kph": 17.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 6, "weather": {"temp_c": 29.7, "feelslike_c": 33.9, "humidity": 74, "wind_kph": 15.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -2, "slot": 7, "weather": {"temp_c": 28.6, "feelslike_c": 33.3, "humidity": 81, "wind_kph": 13.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 0, "weather": {"temp_c": 30.5, "feelslike_c": 35.3, "humidity": 71, "wind_kph": 11.6, "precip_mm": 0.0, "uv": 1.7, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 1, "weather": {"temp_c": 35.0, "feelslike_c": 39.5, "humidity": 50, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 7.8, "condition": "Overcast"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 2, "weather": {"temp_c": 36.6, "feelslike_c": 41.2, "humidity": 44, "wind_kph": 15.3, "precip_mm": 0.0, "uv": 8.3, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 3, "weather": {"temp_c": 35.0, "feelslike_c": 38.3, "humidity": 49, "wind_kph": 14.3, "precip_mm": 0.0, "uv": 5.8, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 4, "weather": {"temp_c": 31.5, "feelslike_c": 35.6, "humidity": 68, "wind_kph": 17.0, "precip_mm": 0.0, "uv": 0.2, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 5, "weather": {"temp_c": 30.1, "feelslike_c": 35.0, "humidity": 77, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 6, "weather": {"temp_c": 29.9, "feelslike_c": 34.4, "humidity": 76, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": -1, "slot": 7, "weather": {"temp_c": 28.9, "feelslike_c": 33.5, "humidity": 78, "wind_kph": 13.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 0, "weather": {"temp_c": 31.2, "feelslike_c": 36.3, "humidity": 70, "wind_kph": 11.7, "precip_mm": 0.0, "uv": 3.0, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 1, "weather": {"temp_c": 35.3, "feelslike_c": 39.9, "humidity": 51, "wind_kph": 15.3, "precip_mm": 0.1, "uv": 8.6, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 2, "weather": {"temp_c": 37.1, "feelslike_c": 41.5, "humidity": 44, "wind_kph": 17.7, "precip_mm": 0.0, "uv": 9.2, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 3, "weather": {"temp_c": 34.5, "feelslike_c": 37.6, "humidity": 54, "wind_kph": 20.6, "precip_mm": 0.0, "uv": 5.8, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 4, "weather": {"temp_c": 31.1, "feelslike_c": 35.7, "humidity": 75, "wind_kph": 19.5, "precip_mm": 0.0, "uv": 0.1, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 5, "weather": {"temp_c": 30.2, "feelslike_c": 35.3, "humidity": 81, "wind_kph": 17.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 6, "weather": {"temp_c": 29.5, "feelslike_c": 34.8, "humidity": 82, "wind_kph": 14.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 0, "slot": 7, "weather": {"temp_c": 29.1, "feelslike_c": 34.7, "humidity": 82, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 0, "weather": {"temp_c": 30.9, "feelslike_c": 36.3, "humidity": 75, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 2.9, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 1, "weather": {"temp_c": 35.5, "feelslike_c": 41.2, "humidity": 50, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 8.0, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 2, "weather": {"temp_c": 37.7, "feelslike_c": 44.4, "humidity": 42, "wind_kph": 3.7, "precip_mm": 0.0, "uv": 8.3, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 3, "weather": {"temp_c": 35.7, "feelslike_c": 39.3, "humidity": 51, "wind_kph": 17.8, "precip_mm": 0.0, "uv": 5.3, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 4, "weather": {"temp_c": 31.1, "feelslike_c": 35.1, "humidity": 72, "wind_kph": 21.2, "precip_mm": 0.0, "uv": 0.2, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 5, "weather": {"temp_c": 30.2, "feelslike_c": 34.6, "humidity": 78, "wind_kph": 20.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 6, "weather": {"temp_c": 29.6, "feelslike_c": 34.9, "humidity": 83, "wind_kph": 15.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 1, "slot": 7, "weather": {"temp_c": 29.2, "feelslike_c": 34.8, "humidity": 83, "wind_kph": 12.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 0, "weather": {"temp_c": 30.9, "feelslike_c": 35.7, "humidity": 73, "wind_kph": 14.6, "precip_mm": 0.0, "uv": 3.0, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 1, "weather": {"temp_c": 35.2, "feelslike_c": 40.5, "humidity": 53, "wind_kph": 13.0, "precip_mm": 0.2, "uv": 7.9, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 2, "weather": {"temp_c": 37.5, "feelslike_c": 43.0, "humidity": 43, "wind_kph": 11.4, "precip_mm": 0.0, "uv": 8.5, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 3, "weather": {"temp_c": 34.9, "feelslike_c": 37.7, "humidity": 51, "wind_kph": 20.1, "precip_mm": 0.0, "uv": 5.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 4, "weather": {"temp_c": 30.7, "feelslike_c": 35.0, "humidity": 73, "wind_kph": 17.8, "precip_mm": 0.0, "uv": 0.1, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 5, "weather": {"temp_c": 28.8, "feelslike_c": 34.1, "humidity": 84, "wind_kph": 13.1, "precip_mm": 1.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 6, "weather": {"temp_c": 29.2, "feelslike_c": 34.3, "humidity": 81, "wind_kph": 14.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Nagapattinam", "day": 2, "slot": 7, "weather": {"temp_c": 29.0, "feelslike_c": 34.3, "humidity": 82, "wind_kph": 12.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
 
-    # ── Kolhapur, Maharashtra (moderate, seasonal rain) ────────────────────
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 0,
-     "weather": {"temp_c": 23.5, "feelslike_c": 25.8, "humidity": 72, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 3.0, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 1,
-     "weather": {"temp_c": 27.8, "feelslike_c": 30.5, "humidity": 65, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 6.5, "condition": "Sunny"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 2,
-     "weather": {"temp_c": 33.2, "feelslike_c": 36.8, "humidity": 56, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 9.5, "condition": "Sunny"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 3,
-     "weather": {"temp_c": 31.5, "feelslike_c": 35.0, "humidity": 60, "wind_kph": 13.0, "precip_mm": 1.5, "uv": 6.0, "condition": "Partly cloudy"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 4,
-     "weather": {"temp_c": 28.0, "feelslike_c": 31.5, "humidity": 68, "wind_kph": 11.0, "precip_mm": 3.0, "uv": 0.5, "condition": "Patchy rain nearby"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 5,
-     "weather": {"temp_c": 25.5, "feelslike_c": 28.0, "humidity": 74, "wind_kph": 9.0,  "precip_mm": 0.5, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 6,
-     "weather": {"temp_c": 22.8, "feelslike_c": 24.9, "humidity": 78, "wind_kph": 8.0,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Kolhapur", "slot": 7,
-     "weather": {"temp_c": 23.2, "feelslike_c": 25.4, "humidity": 76, "wind_kph": 9.5,  "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
+    # Dakshina Kannada, Karnataka
+    # day=-2 (day before yesterday)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 0, "weather": {"temp_c": 29.3, "feelslike_c": 35.9, "humidity": 81, "wind_kph": 4.5, "precip_mm": 0.1, "uv": 2.5, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 1, "weather": {"temp_c": 34.3, "feelslike_c": 39.4, "humidity": 53, "wind_kph": 9.1, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 2, "weather": {"temp_c": 34.7, "feelslike_c": 39.2, "humidity": 49, "wind_kph": 13.8, "precip_mm": 1.8, "uv": 9.1, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 3, "weather": {"temp_c": 33.5, "feelslike_c": 37.2, "humidity": 54, "wind_kph": 12.5, "precip_mm": 1.2, "uv": 6.5, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 4, "weather": {"temp_c": 30.9, "feelslike_c": 36.2, "humidity": 69, "wind_kph": 7.9, "precip_mm": 0.0, "uv": 0.3, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 5, "weather": {"temp_c": 29.2, "feelslike_c": 35.6, "humidity": 78, "wind_kph": 2.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 6, "weather": {"temp_c": 26.0, "feelslike_c": 31.8, "humidity": 93, "wind_kph": 5.2, "precip_mm": 2.8, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -2, "slot": 7, "weather": {"temp_c": 26.1, "feelslike_c": 31.9, "humidity": 96, "wind_kph": 7.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 0, "weather": {"temp_c": 29.0, "feelslike_c": 34.5, "humidity": 75, "wind_kph": 3.7, "precip_mm": 0.0, "uv": 2.4, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 1, "weather": {"temp_c": 34.4, "feelslike_c": 39.9, "humidity": 53, "wind_kph": 5.7, "precip_mm": 0.1, "uv": 7.9, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 2, "weather": {"temp_c": 34.0, "feelslike_c": 38.6, "humidity": 55, "wind_kph": 14.4, "precip_mm": 1.3, "uv": 9.0, "condition": "Thunderstorm"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 3, "weather": {"temp_c": 31.9, "feelslike_c": 36.3, "humidity": 64, "wind_kph": 12.7, "precip_mm": 2.4, "uv": 6.5, "condition": "Thunderstorm"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 4, "weather": {"temp_c": 30.2, "feelslike_c": 35.7, "humidity": 75, "wind_kph": 8.4, "precip_mm": 0.0, "uv": 0.3, "condition": "Thunderstorm"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 5, "weather": {"temp_c": 29.0, "feelslike_c": 35.6, "humidity": 82, "wind_kph": 3.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 6, "weather": {"temp_c": 27.1, "feelslike_c": 32.1, "humidity": 83, "wind_kph": 7.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": -1, "slot": 7, "weather": {"temp_c": 26.3, "feelslike_c": 31.6, "humidity": 87, "wind_kph": 6.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 0, "weather": {"temp_c": 28.8, "feelslike_c": 34.6, "humidity": 80, "wind_kph": 6.1, "precip_mm": 0.0, "uv": 2.5, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 1, "weather": {"temp_c": 33.9, "feelslike_c": 39.2, "humidity": 53, "wind_kph": 8.1, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 2, "weather": {"temp_c": 35.0, "feelslike_c": 38.2, "humidity": 42, "wind_kph": 16.4, "precip_mm": 0.0, "uv": 9.1, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 3, "weather": {"temp_c": 32.4, "feelslike_c": 35.7, "humidity": 57, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 6.5, "condition": "Partly cloudy"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 4, "weather": {"temp_c": 29.4, "feelslike_c": 34.1, "humidity": 73, "wind_kph": 9.1, "precip_mm": 0.0, "uv": 0.6, "condition": "Partly cloudy"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 5, "weather": {"temp_c": 28.1, "feelslike_c": 34.3, "humidity": 81, "wind_kph": 1.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 6, "weather": {"temp_c": 28.0, "feelslike_c": 34.8, "humidity": 88, "wind_kph": 3.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 0, "slot": 7, "weather": {"temp_c": 26.7, "feelslike_c": 33.1, "humidity": 91, "wind_kph": 4.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 0, "weather": {"temp_c": 27.6, "feelslike_c": 32.8, "humidity": 81, "wind_kph": 6.0, "precip_mm": 0.0, "uv": 1.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 1, "weather": {"temp_c": 33.4, "feelslike_c": 38.5, "humidity": 54, "wind_kph": 6.9, "precip_mm": 0.0, "uv": 8.2, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 2, "weather": {"temp_c": 34.5, "feelslike_c": 38.6, "humidity": 48, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 9.1, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 3, "weather": {"temp_c": 32.4, "feelslike_c": 35.4, "humidity": 55, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 6.5, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 4, "weather": {"temp_c": 29.9, "feelslike_c": 33.7, "humidity": 66, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 5, "weather": {"temp_c": 28.7, "feelslike_c": 33.9, "humidity": 73, "wind_kph": 3.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 6, "weather": {"temp_c": 26.9, "feelslike_c": 32.8, "humidity": 87, "wind_kph": 3.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 1, "slot": 7, "weather": {"temp_c": 25.8, "feelslike_c": 31.0, "humidity": 91, "wind_kph": 6.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 0, "weather": {"temp_c": 28.5, "feelslike_c": 33.2, "humidity": 73, "wind_kph": 5.4, "precip_mm": 0.0, "uv": 1.2, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 1, "weather": {"temp_c": 33.8, "feelslike_c": 38.3, "humidity": 51, "wind_kph": 6.6, "precip_mm": 0.0, "uv": 8.1, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 2, "weather": {"temp_c": 35.0, "feelslike_c": 39.6, "humidity": 48, "wind_kph": 14.1, "precip_mm": 0.0, "uv": 9.1, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 3, "weather": {"temp_c": 32.7, "feelslike_c": 36.2, "humidity": 56, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 6.5, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 4, "weather": {"temp_c": 30.2, "feelslike_c": 34.3, "humidity": 65, "wind_kph": 9.4, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 5, "weather": {"temp_c": 28.8, "feelslike_c": 34.1, "humidity": 73, "wind_kph": 3.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 6, "weather": {"temp_c": 27.5, "feelslike_c": 32.6, "humidity": 79, "wind_kph": 4.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dakshina Kannada", "day": 2, "slot": 7, "weather": {"temp_c": 26.4, "feelslike_c": 31.0, "humidity": 82, "wind_kph": 5.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
 
-    # ── Mandya, Karnataka (dry savanna) ───────────────────────────────────
-    {"state": "Karnataka", "district": "Mandya", "slot": 0,
-     "weather": {"temp_c": 22.8, "feelslike_c": 24.5, "humidity": 68, "wind_kph": 9.0,  "precip_mm": 0.0, "uv": 3.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 1,
-     "weather": {"temp_c": 27.5, "feelslike_c": 30.2, "humidity": 62, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 6.5, "condition": "Sunny"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 2,
-     "weather": {"temp_c": 33.0, "feelslike_c": 36.5, "humidity": 53, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 9.0, "condition": "Sunny"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 3,
-     "weather": {"temp_c": 31.2, "feelslike_c": 34.8, "humidity": 58, "wind_kph": 12.5, "precip_mm": 1.0, "uv": 5.5, "condition": "Partly cloudy"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 4,
-     "weather": {"temp_c": 27.8, "feelslike_c": 30.5, "humidity": 65, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 0.5, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 5,
-     "weather": {"temp_c": 25.0, "feelslike_c": 27.2, "humidity": 70, "wind_kph": 8.5,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 6,
-     "weather": {"temp_c": 22.0, "feelslike_c": 23.8, "humidity": 74, "wind_kph": 7.5,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Mandya", "slot": 7,
-     "weather": {"temp_c": 22.5, "feelslike_c": 24.2, "humidity": 72, "wind_kph": 8.5,  "precip_mm": 0.0, "uv": 0.5, "condition": "Clear"}},
+    # Sugarcane — Tropical Wet / Irrigated
+    # Kolhapur, Maharashtra
+    # day=-2 (day before yesterday)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 0, "weather": {"temp_c": 24.9, "feelslike_c": 27.4, "humidity": 75, "wind_kph": 9.0, "precip_mm": 0.0, "uv": 2.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 1, "weather": {"temp_c": 32.9, "feelslike_c": 33.3, "humidity": 29, "wind_kph": 10.1, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 2, "weather": {"temp_c": 36.8, "feelslike_c": 36.7, "humidity": 20, "wind_kph": 15.2, "precip_mm": 0.0, "uv": 9.0, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 3, "weather": {"temp_c": 35.3, "feelslike_c": 33.8, "humidity": 26, "wind_kph": 18.7, "precip_mm": 0.0, "uv": 6.6, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 4, "weather": {"temp_c": 29.9, "feelslike_c": 28.8, "humidity": 39, "wind_kph": 16.9, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 5, "weather": {"temp_c": 25.5, "feelslike_c": 26.9, "humidity": 66, "wind_kph": 11.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 6, "weather": {"temp_c": 24.2, "feelslike_c": 27.3, "humidity": 81, "wind_kph": 7.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -2, "slot": 7, "weather": {"temp_c": 23.1, "feelslike_c": 26.3, "humidity": 89, "wind_kph": 8.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 0, "weather": {"temp_c": 24.4, "feelslike_c": 26.7, "humidity": 76, "wind_kph": 9.7, "precip_mm": 0.0, "uv": 2.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 1, "weather": {"temp_c": 31.7, "feelslike_c": 32.6, "humidity": 39, "wind_kph": 14.4, "precip_mm": 0.0, "uv": 8.1, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 2, "weather": {"temp_c": 34.6, "feelslike_c": 35.5, "humidity": 31, "wind_kph": 18.6, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 3, "weather": {"temp_c": 33.7, "feelslike_c": 32.2, "humidity": 30, "wind_kph": 20.4, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 4, "weather": {"temp_c": 28.6, "feelslike_c": 28.5, "humidity": 48, "wind_kph": 15.2, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 5, "weather": {"temp_c": 25.0, "feelslike_c": 26.7, "humidity": 70, "wind_kph": 11.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 6, "weather": {"temp_c": 23.4, "feelslike_c": 25.6, "humidity": 80, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": -1, "slot": 7, "weather": {"temp_c": 22.1, "feelslike_c": 24.8, "humidity": 90, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 0, "weather": {"temp_c": 25.3, "feelslike_c": 26.2, "humidity": 58, "wind_kph": 8.9, "precip_mm": 0.0, "uv": 2.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 1, "weather": {"temp_c": 33.6, "feelslike_c": 33.8, "humidity": 30, "wind_kph": 13.1, "precip_mm": 0.0, "uv": 8.1, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 2, "weather": {"temp_c": 36.6, "feelslike_c": 36.6, "humidity": 24, "wind_kph": 19.4, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 3, "weather": {"temp_c": 33.3, "feelslike_c": 32.4, "humidity": 36, "wind_kph": 22.7, "precip_mm": 0.0, "uv": 6.5, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 4, "weather": {"temp_c": 27.3, "feelslike_c": 28.0, "humidity": 63, "wind_kph": 19.8, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 5, "weather": {"temp_c": 24.1, "feelslike_c": 27.0, "humidity": 85, "wind_kph": 12.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 6, "weather": {"temp_c": 23.4, "feelslike_c": 25.3, "humidity": 74, "wind_kph": 8.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 0, "slot": 7, "weather": {"temp_c": 22.3, "feelslike_c": 23.7, "humidity": 74, "wind_kph": 8.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 0, "weather": {"temp_c": 23.9, "feelslike_c": 27.1, "humidity": 84, "wind_kph": 8.0, "precip_mm": 0.0, "uv": 2.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 1, "weather": {"temp_c": 32.0, "feelslike_c": 34.5, "humidity": 45, "wind_kph": 10.6, "precip_mm": 0.0, "uv": 8.1, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 2, "weather": {"temp_c": 37.0, "feelslike_c": 37.4, "humidity": 23, "wind_kph": 16.5, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 3, "weather": {"temp_c": 34.9, "feelslike_c": 33.9, "humidity": 32, "wind_kph": 20.3, "precip_mm": 0.0, "uv": 6.5, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 4, "weather": {"temp_c": 27.8, "feelslike_c": 28.9, "humidity": 63, "wind_kph": 18.3, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 5, "weather": {"temp_c": 24.0, "feelslike_c": 26.5, "humidity": 87, "wind_kph": 15.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 6, "weather": {"temp_c": 22.8, "feelslike_c": 25.5, "humidity": 93, "wind_kph": 13.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 1, "slot": 7, "weather": {"temp_c": 22.1, "feelslike_c": 24.8, "humidity": 96, "wind_kph": 13.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 0, "weather": {"temp_c": 24.0, "feelslike_c": 27.1, "humidity": 84, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 2.4, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 1, "weather": {"temp_c": 32.5, "feelslike_c": 34.4, "humidity": 40, "wind_kph": 10.4, "precip_mm": 0.0, "uv": 8.1, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 2, "weather": {"temp_c": 36.5, "feelslike_c": 36.0, "humidity": 22, "wind_kph": 19.2, "precip_mm": 0.0, "uv": 8.9, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 3, "weather": {"temp_c": 34.3, "feelslike_c": 32.2, "humidity": 27, "wind_kph": 21.7, "precip_mm": 0.0, "uv": 6.6, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 4, "weather": {"temp_c": 27.1, "feelslike_c": 28.4, "humidity": 66, "wind_kph": 18.0, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 5, "weather": {"temp_c": 23.9, "feelslike_c": 26.9, "humidity": 87, "wind_kph": 11.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 6, "weather": {"temp_c": 22.8, "feelslike_c": 25.8, "humidity": 94, "wind_kph": 11.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Kolhapur", "day": 2, "slot": 7, "weather": {"temp_c": 22.2, "feelslike_c": 25.4, "humidity": 97, "wind_kph": 10.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
 
-    # ── Coimbatore, Tamil Nadu (dry, windy plateau) ────────────────────────
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 0,
-     "weather": {"temp_c": 24.5, "feelslike_c": 26.8, "humidity": 65, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 3.5, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 1,
-     "weather": {"temp_c": 29.0, "feelslike_c": 32.5, "humidity": 58, "wind_kph": 18.0, "precip_mm": 0.0, "uv": 7.5, "condition": "Sunny"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 2,
-     "weather": {"temp_c": 34.5, "feelslike_c": 38.0, "humidity": 50, "wind_kph": 20.0, "precip_mm": 0.0, "uv": 10.0, "condition": "Sunny"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 3,
-     "weather": {"temp_c": 32.8, "feelslike_c": 36.2, "humidity": 54, "wind_kph": 19.0, "precip_mm": 0.5, "uv": 6.5, "condition": "Partly cloudy"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 4,
-     "weather": {"temp_c": 29.5, "feelslike_c": 33.0, "humidity": 60, "wind_kph": 17.0, "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 5,
-     "weather": {"temp_c": 27.0, "feelslike_c": 30.0, "humidity": 66, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 6,
-     "weather": {"temp_c": 24.2, "feelslike_c": 26.5, "humidity": 70, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Tamil Nadu", "district": "Coimbatore", "slot": 7,
-     "weather": {"temp_c": 24.8, "feelslike_c": 27.2, "humidity": 68, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
+    # Mandya, Karnataka
+    # day=-2 (day before yesterday)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 0, "weather": {"temp_c": 25.5, "feelslike_c": 28.5, "humidity": 81, "wind_kph": 12.7, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 1, "weather": {"temp_c": 31.3, "feelslike_c": 34.7, "humidity": 50, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 8.7, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 2, "weather": {"temp_c": 34.4, "feelslike_c": 38.7, "humidity": 36, "wind_kph": 3.1, "precip_mm": 0.0, "uv": 9.4, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 3, "weather": {"temp_c": 32.5, "feelslike_c": 33.8, "humidity": 40, "wind_kph": 10.2, "precip_mm": 0.8, "uv": 1.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 4, "weather": {"temp_c": 27.4, "feelslike_c": 29.0, "humidity": 57, "wind_kph": 9.5, "precip_mm": 0.2, "uv": 0.1, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 5, "weather": {"temp_c": 25.8, "feelslike_c": 27.9, "humidity": 68, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 6, "weather": {"temp_c": 24.7, "feelslike_c": 27.1, "humidity": 80, "wind_kph": 13.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Mandya", "day": -2, "slot": 7, "weather": {"temp_c": 23.6, "feelslike_c": 26.8, "humidity": 90, "wind_kph": 11.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 0, "weather": {"temp_c": 24.7, "feelslike_c": 27.5, "humidity": 77, "wind_kph": 8.6, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 1, "weather": {"temp_c": 30.7, "feelslike_c": 34.5, "humidity": 52, "wind_kph": 7.9, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 2, "weather": {"temp_c": 34.1, "feelslike_c": 37.8, "humidity": 39, "wind_kph": 8.4, "precip_mm": 0.0, "uv": 9.3, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 3, "weather": {"temp_c": 32.8, "feelslike_c": 33.2, "humidity": 39, "wind_kph": 14.9, "precip_mm": 0.3, "uv": 3.3, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 4, "weather": {"temp_c": 26.8, "feelslike_c": 28.4, "humidity": 62, "wind_kph": 11.1, "precip_mm": 0.3, "uv": 0.2, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 5, "weather": {"temp_c": 25.3, "feelslike_c": 27.5, "humidity": 74, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 6, "weather": {"temp_c": 23.2, "feelslike_c": 25.8, "humidity": 82, "wind_kph": 8.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Mandya", "day": -1, "slot": 7, "weather": {"temp_c": 22.2, "feelslike_c": 24.9, "humidity": 87, "wind_kph": 8.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 0, "weather": {"temp_c": 25.3, "feelslike_c": 28.5, "humidity": 79, "wind_kph": 9.7, "precip_mm": 0.0, "uv": 2.8, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 1, "weather": {"temp_c": 32.2, "feelslike_c": 35.3, "humidity": 45, "wind_kph": 9.2, "precip_mm": 0.0, "uv": 8.7, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 2, "weather": {"temp_c": 35.8, "feelslike_c": 37.2, "humidity": 27, "wind_kph": 11.7, "precip_mm": 0.0, "uv": 9.3, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 3, "weather": {"temp_c": 35.4, "feelslike_c": 34.2, "humidity": 24, "wind_kph": 14.8, "precip_mm": 0.0, "uv": 5.5, "condition": "Overcast"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 4, "weather": {"temp_c": 30.3, "feelslike_c": 29.8, "humidity": 45, "wind_kph": 18.2, "precip_mm": 0.0, "uv": 0.2, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 5, "weather": {"temp_c": 25.7, "feelslike_c": 27.0, "humidity": 74, "wind_kph": 19.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 6, "weather": {"temp_c": 23.2, "feelslike_c": 26.9, "humidity": 89, "wind_kph": 5.6, "precip_mm": 1.1, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Mandya", "day": 0, "slot": 7, "weather": {"temp_c": 22.3, "feelslike_c": 26.3, "humidity": 94, "wind_kph": 3.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 0, "weather": {"temp_c": 23.5, "feelslike_c": 25.7, "humidity": 77, "wind_kph": 8.1, "precip_mm": 0.0, "uv": 2.8, "condition": "Partly cloudy"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 1, "weather": {"temp_c": 30.8, "feelslike_c": 33.6, "humidity": 45, "wind_kph": 7.3, "precip_mm": 0.0, "uv": 8.6, "condition": "Overcast"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 2, "weather": {"temp_c": 35.7, "feelslike_c": 38.0, "humidity": 27, "wind_kph": 7.3, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 3, "weather": {"temp_c": 35.9, "feelslike_c": 35.1, "humidity": 24, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 6.4, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 4, "weather": {"temp_c": 31.2, "feelslike_c": 30.5, "humidity": 38, "wind_kph": 15.7, "precip_mm": 0.0, "uv": 0.3, "condition": "Partly cloudy"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 5, "weather": {"temp_c": 26.9, "feelslike_c": 28.1, "humidity": 66, "wind_kph": 17.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 6, "weather": {"temp_c": 23.4, "feelslike_c": 25.7, "humidity": 87, "wind_kph": 14.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Mandya", "day": 1, "slot": 7, "weather": {"temp_c": 21.9, "feelslike_c": 24.3, "humidity": 88, "wind_kph": 9.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 0, "weather": {"temp_c": 24.1, "feelslike_c": 27.3, "humidity": 81, "wind_kph": 6.6, "precip_mm": 0.0, "uv": 2.9, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 1, "weather": {"temp_c": 31.1, "feelslike_c": 35.1, "humidity": 49, "wind_kph": 5.0, "precip_mm": 0.0, "uv": 8.7, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 2, "weather": {"temp_c": 35.3, "feelslike_c": 39.2, "humidity": 35, "wind_kph": 5.6, "precip_mm": 0.0, "uv": 9.4, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 3, "weather": {"temp_c": 32.2, "feelslike_c": 33.5, "humidity": 44, "wind_kph": 10.1, "precip_mm": 3.4, "uv": 1.2, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 4, "weather": {"temp_c": 27.4, "feelslike_c": 29.9, "humidity": 62, "wind_kph": 7.7, "precip_mm": 0.0, "uv": 0.1, "condition": "Partly cloudy"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 5, "weather": {"temp_c": 26.1, "feelslike_c": 28.6, "humidity": 72, "wind_kph": 11.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 6, "weather": {"temp_c": 24.1, "feelslike_c": 26.2, "humidity": 83, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Mandya", "day": 2, "slot": 7, "weather": {"temp_c": 22.5, "feelslike_c": 25.4, "humidity": 91, "wind_kph": 10.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
 
-    # ── Indore, Madhya Pradesh (hot semi-arid, extreme summers) ───────────
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 0,
-     "weather": {"temp_c": 28.0, "feelslike_c": 30.5, "humidity": 42, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 4.0, "condition": "Clear"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 1,
-     "weather": {"temp_c": 33.5, "feelslike_c": 36.8, "humidity": 35, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 8.0, "condition": "Sunny"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 2,
-     "weather": {"temp_c": 40.2, "feelslike_c": 43.5, "humidity": 25, "wind_kph": 18.0, "precip_mm": 0.0, "uv": 11.0, "condition": "Sunny"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 3,
-     "weather": {"temp_c": 38.0, "feelslike_c": 41.2, "humidity": 28, "wind_kph": 17.0, "precip_mm": 0.0, "uv": 7.5, "condition": "Sunny"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 4,
-     "weather": {"temp_c": 34.5, "feelslike_c": 37.8, "humidity": 33, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 5,
-     "weather": {"temp_c": 31.0, "feelslike_c": 33.8, "humidity": 38, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 6,
-     "weather": {"temp_c": 27.5, "feelslike_c": 29.8, "humidity": 44, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Madhya Pradesh", "district": "Indore", "slot": 7,
-     "weather": {"temp_c": 28.2, "feelslike_c": 30.6, "humidity": 43, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 1.5, "condition": "Clear"}},
+    # Satara, Maharashtra
+    # day=-2 (day before yesterday)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 0, "weather": {"temp_c": 25.4, "feelslike_c": 26.4, "humidity": 54, "wind_kph": 4.7, "precip_mm": 0.0, "uv": 2.3, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 1, "weather": {"temp_c": 33.0, "feelslike_c": 32.8, "humidity": 24, "wind_kph": 9.4, "precip_mm": 0.0, "uv": 8.0, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 2, "weather": {"temp_c": 35.4, "feelslike_c": 35.7, "humidity": 25, "wind_kph": 17.1, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 3, "weather": {"temp_c": 33.4, "feelslike_c": 32.4, "humidity": 32, "wind_kph": 18.2, "precip_mm": 0.0, "uv": 6.5, "condition": "Partly cloudy"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 4, "weather": {"temp_c": 27.8, "feelslike_c": 27.9, "humidity": 48, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 5, "weather": {"temp_c": 23.9, "feelslike_c": 25.7, "humidity": 70, "wind_kph": 7.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 6, "weather": {"temp_c": 23.3, "feelslike_c": 25.8, "humidity": 81, "wind_kph": 8.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Satara", "day": -2, "slot": 7, "weather": {"temp_c": 22.2, "feelslike_c": 24.4, "humidity": 78, "wind_kph": 5.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 0, "weather": {"temp_c": 23.7, "feelslike_c": 25.7, "humidity": 72, "wind_kph": 5.9, "precip_mm": 0.0, "uv": 2.3, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 1, "weather": {"temp_c": 30.9, "feelslike_c": 31.7, "humidity": 38, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 2, "weather": {"temp_c": 33.2, "feelslike_c": 34.3, "humidity": 35, "wind_kph": 19.3, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 3, "weather": {"temp_c": 31.4, "feelslike_c": 30.8, "humidity": 41, "wind_kph": 20.5, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 4, "weather": {"temp_c": 26.2, "feelslike_c": 27.1, "humidity": 62, "wind_kph": 13.8, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 5, "weather": {"temp_c": 22.7, "feelslike_c": 25.7, "humidity": 86, "wind_kph": 6.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 6, "weather": {"temp_c": 22.1, "feelslike_c": 23.9, "humidity": 75, "wind_kph": 6.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Satara", "day": -1, "slot": 7, "weather": {"temp_c": 20.9, "feelslike_c": 22.7, "humidity": 81, "wind_kph": 5.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 0, "weather": {"temp_c": 24.9, "feelslike_c": 25.7, "humidity": 57, "wind_kph": 7.0, "precip_mm": 0.0, "uv": 2.3, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 1, "weather": {"temp_c": 33.2, "feelslike_c": 32.7, "humidity": 28, "wind_kph": 14.6, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 2, "weather": {"temp_c": 34.6, "feelslike_c": 34.9, "humidity": 30, "wind_kph": 21.5, "precip_mm": 0.1, "uv": 8.8, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 3, "weather": {"temp_c": 31.5, "feelslike_c": 30.8, "humidity": 43, "wind_kph": 22.9, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 4, "weather": {"temp_c": 25.8, "feelslike_c": 27.2, "humidity": 71, "wind_kph": 17.2, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 5, "weather": {"temp_c": 23.4, "feelslike_c": 25.9, "humidity": 85, "wind_kph": 11.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 6, "weather": {"temp_c": 21.3, "feelslike_c": 23.9, "humidity": 86, "wind_kph": 5.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Satara", "day": 0, "slot": 7, "weather": {"temp_c": 20.8, "feelslike_c": 21.8, "humidity": 71, "wind_kph": 5.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 0, "weather": {"temp_c": 24.0, "feelslike_c": 25.9, "humidity": 74, "wind_kph": 9.1, "precip_mm": 0.0, "uv": 2.3, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 1, "weather": {"temp_c": 33.2, "feelslike_c": 33.3, "humidity": 30, "wind_kph": 13.8, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 2, "weather": {"temp_c": 36.3, "feelslike_c": 35.8, "humidity": 21, "wind_kph": 18.5, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 3, "weather": {"temp_c": 33.7, "feelslike_c": 32.0, "humidity": 30, "wind_kph": 20.6, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 4, "weather": {"temp_c": 27.1, "feelslike_c": 28.1, "humidity": 61, "wind_kph": 15.4, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 5, "weather": {"temp_c": 23.5, "feelslike_c": 26.0, "humidity": 82, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 6, "weather": {"temp_c": 22.1, "feelslike_c": 24.4, "humidity": 86, "wind_kph": 9.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Satara", "day": 1, "slot": 7, "weather": {"temp_c": 21.2, "feelslike_c": 23.3, "humidity": 89, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 0, "weather": {"temp_c": 23.3, "feelslike_c": 25.8, "humidity": 78, "wind_kph": 5.8, "precip_mm": 0.0, "uv": 2.3, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 1, "weather": {"temp_c": 31.8, "feelslike_c": 32.1, "humidity": 32, "wind_kph": 12.7, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 2, "weather": {"temp_c": 34.7, "feelslike_c": 34.6, "humidity": 25, "wind_kph": 18.7, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 3, "weather": {"temp_c": 32.6, "feelslike_c": 30.9, "humidity": 32, "wind_kph": 21.5, "precip_mm": 0.0, "uv": 6.5, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 4, "weather": {"temp_c": 25.7, "feelslike_c": 27.5, "humidity": 72, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 0.8, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 5, "weather": {"temp_c": 22.8, "feelslike_c": 26.1, "humidity": 88, "wind_kph": 6.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 6, "weather": {"temp_c": 21.7, "feelslike_c": 24.6, "humidity": 92, "wind_kph": 8.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Satara", "day": 2, "slot": 7, "weather": {"temp_c": 21.2, "feelslike_c": 23.6, "humidity": 91, "wind_kph": 8.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
 
-    # ── Nagpur, Maharashtra (hottest city, very dry) ───────────────────────
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 0,
-     "weather": {"temp_c": 30.5, "feelslike_c": 33.0, "humidity": 35, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 4.5, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 1,
-     "weather": {"temp_c": 36.0, "feelslike_c": 39.5, "humidity": 28, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 8.5, "condition": "Sunny"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 2,
-     "weather": {"temp_c": 42.5, "feelslike_c": 45.8, "humidity": 18, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 12.0, "condition": "Sunny"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 3,
-     "weather": {"temp_c": 40.0, "feelslike_c": 43.2, "humidity": 21, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 8.0, "condition": "Sunny"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 4,
-     "weather": {"temp_c": 36.5, "feelslike_c": 39.8, "humidity": 26, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 1.5, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 5,
-     "weather": {"temp_c": 33.0, "feelslike_c": 35.5, "humidity": 31, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 6,
-     "weather": {"temp_c": 29.5, "feelslike_c": 31.8, "humidity": 37, "wind_kph": 9.0,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Maharashtra", "district": "Nagpur", "slot": 7,
-     "weather": {"temp_c": 30.2, "feelslike_c": 32.6, "humidity": 36, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 2.0, "condition": "Clear"}},
+    # Belagavi, Karnataka
+    # day=-2 (day before yesterday)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 0, "weather": {"temp_c": 25.2, "feelslike_c": 28.5, "humidity": 85, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 2.5, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 1, "weather": {"temp_c": 30.5, "feelslike_c": 34.4, "humidity": 57, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 8.4, "condition": "Thunderstorm"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 2, "weather": {"temp_c": 32.8, "feelslike_c": 36.1, "humidity": 42, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 3, "weather": {"temp_c": 30.3, "feelslike_c": 31.6, "humidity": 51, "wind_kph": 15.9, "precip_mm": 0.7, "uv": 6.8, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 4, "weather": {"temp_c": 27.0, "feelslike_c": 29.1, "humidity": 70, "wind_kph": 16.2, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 5, "weather": {"temp_c": 23.4, "feelslike_c": 26.6, "humidity": 95, "wind_kph": 14.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 6, "weather": {"temp_c": 23.9, "feelslike_c": 27.2, "humidity": 92, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Belagavi", "day": -2, "slot": 7, "weather": {"temp_c": 23.7, "feelslike_c": 27.2, "humidity": 93, "wind_kph": 11.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 0, "weather": {"temp_c": 23.3, "feelslike_c": 25.5, "humidity": 80, "wind_kph": 10.7, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 1, "weather": {"temp_c": 29.8, "feelslike_c": 32.0, "humidity": 50, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 2, "weather": {"temp_c": 32.3, "feelslike_c": 33.8, "humidity": 39, "wind_kph": 17.8, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 3, "weather": {"temp_c": 31.5, "feelslike_c": 30.6, "humidity": 38, "wind_kph": 19.9, "precip_mm": 0.0, "uv": 6.7, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 4, "weather": {"temp_c": 26.7, "feelslike_c": 27.7, "humidity": 60, "wind_kph": 13.7, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 5, "weather": {"temp_c": 23.2, "feelslike_c": 25.1, "humidity": 80, "wind_kph": 12.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 6, "weather": {"temp_c": 22.0, "feelslike_c": 24.6, "humidity": 97, "wind_kph": 14.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Belagavi", "day": -1, "slot": 7, "weather": {"temp_c": 21.0, "feelslike_c": 22.8, "humidity": 90, "wind_kph": 12.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 0, "weather": {"temp_c": 23.4, "feelslike_c": 24.5, "humidity": 71, "wind_kph": 10.8, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 1, "weather": {"temp_c": 31.4, "feelslike_c": 31.7, "humidity": 34, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 2, "weather": {"temp_c": 34.4, "feelslike_c": 34.9, "humidity": 27, "wind_kph": 18.0, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 3, "weather": {"temp_c": 31.1, "feelslike_c": 30.9, "humidity": 45, "wind_kph": 22.5, "precip_mm": 0.0, "uv": 6.7, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 4, "weather": {"temp_c": 25.5, "feelslike_c": 26.4, "humidity": 72, "wind_kph": 19.6, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 5, "weather": {"temp_c": 22.3, "feelslike_c": 24.3, "humidity": 93, "wind_kph": 16.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 6, "weather": {"temp_c": 21.8, "feelslike_c": 23.5, "humidity": 87, "wind_kph": 13.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Belagavi", "day": 0, "slot": 7, "weather": {"temp_c": 20.7, "feelslike_c": 22.0, "humidity": 88, "wind_kph": 12.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 0, "weather": {"temp_c": 22.4, "feelslike_c": 24.7, "humidity": 85, "wind_kph": 9.9, "precip_mm": 0.0, "uv": 2.5, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 1, "weather": {"temp_c": 30.0, "feelslike_c": 31.9, "humidity": 48, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 2, "weather": {"temp_c": 34.8, "feelslike_c": 35.7, "humidity": 28, "wind_kph": 15.3, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 3, "weather": {"temp_c": 32.3, "feelslike_c": 31.9, "humidity": 40, "wind_kph": 20.8, "precip_mm": 0.0, "uv": 6.7, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 4, "weather": {"temp_c": 25.7, "feelslike_c": 27.2, "humidity": 75, "wind_kph": 19.8, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 5, "weather": {"temp_c": 22.3, "feelslike_c": 24.3, "humidity": 95, "wind_kph": 18.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 6, "weather": {"temp_c": 21.3, "feelslike_c": 22.8, "humidity": 93, "wind_kph": 17.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Belagavi", "day": 1, "slot": 7, "weather": {"temp_c": 20.4, "feelslike_c": 22.5, "humidity": 93, "wind_kph": 9.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 0, "weather": {"temp_c": 22.9, "feelslike_c": 25.1, "humidity": 84, "wind_kph": 11.1, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 1, "weather": {"temp_c": 31.0, "feelslike_c": 32.8, "humidity": 40, "wind_kph": 9.9, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 2, "weather": {"temp_c": 34.2, "feelslike_c": 34.7, "humidity": 28, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 9.2, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 3, "weather": {"temp_c": 32.0, "feelslike_c": 31.0, "humidity": 36, "wind_kph": 19.1, "precip_mm": 0.0, "uv": 6.7, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 4, "weather": {"temp_c": 25.6, "feelslike_c": 27.1, "humidity": 73, "wind_kph": 17.3, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 5, "weather": {"temp_c": 22.1, "feelslike_c": 24.5, "humidity": 95, "wind_kph": 15.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 6, "weather": {"temp_c": 21.2, "feelslike_c": 23.6, "humidity": 98, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Belagavi", "day": 2, "slot": 7, "weather": {"temp_c": 21.0, "feelslike_c": 23.6, "humidity": 99, "wind_kph": 10.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
 
-    # ── Dharwad, Karnataka (dry sub-humid plateau) ─────────────────────────
-    {"state": "Karnataka", "district": "Dharwad", "slot": 0,
-     "weather": {"temp_c": 23.0, "feelslike_c": 25.5, "humidity": 62, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 3.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 1,
-     "weather": {"temp_c": 28.5, "feelslike_c": 31.8, "humidity": 55, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 7.0, "condition": "Sunny"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 2,
-     "weather": {"temp_c": 35.0, "feelslike_c": 38.5, "humidity": 46, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 9.5, "condition": "Sunny"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 3,
-     "weather": {"temp_c": 33.0, "feelslike_c": 36.5, "humidity": 50, "wind_kph": 13.5, "precip_mm": 1.5, "uv": 6.0, "condition": "Partly cloudy"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 4,
-     "weather": {"temp_c": 29.5, "feelslike_c": 32.8, "humidity": 57, "wind_kph": 12.0, "precip_mm": 0.5, "uv": 0.5, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 5,
-     "weather": {"temp_c": 26.5, "feelslike_c": 29.0, "humidity": 63, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 6,
-     "weather": {"temp_c": 23.5, "feelslike_c": 25.8, "humidity": 67, "wind_kph": 8.5,  "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}},
-    {"state": "Karnataka", "district": "Dharwad", "slot": 7,
-     "weather": {"temp_c": 23.8, "feelslike_c": 26.2, "humidity": 65, "wind_kph": 9.5,  "precip_mm": 0.0, "uv": 1.0, "condition": "Clear"}},
+    # Coimbatore, Tamil Nadu
+    # day=-2 (day before yesterday)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 0, "weather": {"temp_c": 26.9, "feelslike_c": 31.4, "humidity": 79, "wind_kph": 6.2, "precip_mm": 0.0, "uv": 2.8, "condition": "Partly cloudy"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 1, "weather": {"temp_c": 33.1, "feelslike_c": 37.3, "humidity": 47, "wind_kph": 6.2, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 2, "weather": {"temp_c": 37.2, "feelslike_c": 40.2, "humidity": 29, "wind_kph": 7.2, "precip_mm": 0.0, "uv": 9.3, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 3, "weather": {"temp_c": 33.9, "feelslike_c": 34.6, "humidity": 43, "wind_kph": 17.7, "precip_mm": 0.1, "uv": 6.5, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 4, "weather": {"temp_c": 28.6, "feelslike_c": 30.9, "humidity": 66, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 0.2, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 5, "weather": {"temp_c": 26.6, "feelslike_c": 29.9, "humidity": 77, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 6, "weather": {"temp_c": 26.1, "feelslike_c": 29.9, "humidity": 85, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -2, "slot": 7, "weather": {"temp_c": 25.3, "feelslike_c": 29.5, "humidity": 87, "wind_kph": 8.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 0, "weather": {"temp_c": 26.4, "feelslike_c": 31.1, "humidity": 79, "wind_kph": 3.4, "precip_mm": 0.0, "uv": 2.3, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 1, "weather": {"temp_c": 32.6, "feelslike_c": 36.7, "humidity": 49, "wind_kph": 7.5, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 2, "weather": {"temp_c": 35.8, "feelslike_c": 39.0, "humidity": 37, "wind_kph": 12.8, "precip_mm": 0.0, "uv": 9.2, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 3, "weather": {"temp_c": 30.1, "feelslike_c": 33.2, "humidity": 60, "wind_kph": 9.2, "precip_mm": 10.3, "uv": 3.8, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 4, "weather": {"temp_c": 30.1, "feelslike_c": 32.7, "humidity": 59, "wind_kph": 12.7, "precip_mm": 0.0, "uv": 0.1, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 5, "weather": {"temp_c": 28.0, "feelslike_c": 31.5, "humidity": 71, "wind_kph": 11.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 6, "weather": {"temp_c": 25.0, "feelslike_c": 28.5, "humidity": 83, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": -1, "slot": 7, "weather": {"temp_c": 24.5, "feelslike_c": 28.7, "humidity": 87, "wind_kph": 6.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 0, "weather": {"temp_c": 27.0, "feelslike_c": 31.3, "humidity": 81, "wind_kph": 10.4, "precip_mm": 0.0, "uv": 2.5, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 1, "weather": {"temp_c": 33.5, "feelslike_c": 37.6, "humidity": 49, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 8.3, "condition": "Overcast"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 2, "weather": {"temp_c": 34.5, "feelslike_c": 37.7, "humidity": 43, "wind_kph": 12.7, "precip_mm": 0.9, "uv": 9.1, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 3, "weather": {"temp_c": 31.2, "feelslike_c": 33.3, "humidity": 57, "wind_kph": 17.2, "precip_mm": 0.0, "uv": 6.2, "condition": "Overcast"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 4, "weather": {"temp_c": 27.2, "feelslike_c": 30.1, "humidity": 76, "wind_kph": 16.9, "precip_mm": 0.0, "uv": 0.3, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 5, "weather": {"temp_c": 25.9, "feelslike_c": 29.5, "humidity": 84, "wind_kph": 13.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 6, "weather": {"temp_c": 26.4, "feelslike_c": 30.5, "humidity": 83, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 0, "slot": 7, "weather": {"temp_c": 25.5, "feelslike_c": 29.7, "humidity": 89, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 0, "weather": {"temp_c": 26.4, "feelslike_c": 30.6, "humidity": 80, "wind_kph": 7.5, "precip_mm": 0.0, "uv": 2.0, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 1, "weather": {"temp_c": 33.0, "feelslike_c": 36.5, "humidity": 46, "wind_kph": 8.8, "precip_mm": 0.0, "uv": 8.6, "condition": "Overcast"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 2, "weather": {"temp_c": 36.9, "feelslike_c": 40.3, "humidity": 32, "wind_kph": 8.0, "precip_mm": 0.0, "uv": 9.3, "condition": "Overcast"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 3, "weather": {"temp_c": 33.7, "feelslike_c": 34.9, "humidity": 44, "wind_kph": 18.6, "precip_mm": 0.8, "uv": 6.4, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 4, "weather": {"temp_c": 29.3, "feelslike_c": 30.9, "humidity": 64, "wind_kph": 21.0, "precip_mm": 0.0, "uv": 0.2, "condition": "Overcast"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 5, "weather": {"temp_c": 27.0, "feelslike_c": 29.7, "humidity": 76, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 6, "weather": {"temp_c": 25.4, "feelslike_c": 29.3, "humidity": 88, "wind_kph": 11.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 1, "slot": 7, "weather": {"temp_c": 24.7, "feelslike_c": 28.9, "humidity": 92, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 0, "weather": {"temp_c": 26.9, "feelslike_c": 30.7, "humidity": 77, "wind_kph": 8.8, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 1, "weather": {"temp_c": 33.1, "feelslike_c": 36.7, "humidity": 47, "wind_kph": 10.6, "precip_mm": 0.0, "uv": 8.6, "condition": "Mostly clear"}}, # slot 1 (09-12)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 2, "weather": {"temp_c": 35.0, "feelslike_c": 38.9, "humidity": 41, "wind_kph": 11.6, "precip_mm": 0.8, "uv": 9.3, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 3, "weather": {"temp_c": 31.2, "feelslike_c": 33.6, "humidity": 56, "wind_kph": 15.0, "precip_mm": 0.3, "uv": 6.5, "condition": "Partly cloudy"}}, # slot 3 (15-18)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 4, "weather": {"temp_c": 28.0, "feelslike_c": 31.3, "humidity": 73, "wind_kph": 12.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 4 (18-21)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 5, "weather": {"temp_c": 25.6, "feelslike_c": 29.8, "humidity": 84, "wind_kph": 7.5, "precip_mm": 0.1, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 6, "weather": {"temp_c": 26.2, "feelslike_c": 30.0, "humidity": 80, "wind_kph": 9.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Tamil Nadu", "district": "Coimbatore", "day": 2, "slot": 7, "weather": {"temp_c": 25.1, "feelslike_c": 28.7, "humidity": 86, "wind_kph": 10.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+
+    # Soybean — Semi-Arid / Central India
+    # Indore, Madhya Pradesh
+    # day=-2 (day before yesterday)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 0, "weather": {"temp_c": 27.5, "feelslike_c": 28.8, "humidity": 59, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 1, "weather": {"temp_c": 34.2, "feelslike_c": 34.3, "humidity": 30, "wind_kph": 15.2, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 2, "weather": {"temp_c": 38.3, "feelslike_c": 37.7, "humidity": 17, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 3, "weather": {"temp_c": 38.2, "feelslike_c": 35.4, "humidity": 16, "wind_kph": 17.3, "precip_mm": 0.0, "uv": 6.2, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 4, "weather": {"temp_c": 34.8, "feelslike_c": 32.4, "humidity": 21, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 5, "weather": {"temp_c": 31.3, "feelslike_c": 29.9, "humidity": 31, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 6, "weather": {"temp_c": 28.9, "feelslike_c": 26.9, "humidity": 32, "wind_kph": 14.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -2, "slot": 7, "weather": {"temp_c": 26.5, "feelslike_c": 26.2, "humidity": 50, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 0, "weather": {"temp_c": 27.2, "feelslike_c": 29.4, "humidity": 60, "wind_kph": 7.1, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 1, "weather": {"temp_c": 33.0, "feelslike_c": 35.5, "humidity": 41, "wind_kph": 10.0, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 2, "weather": {"temp_c": 37.7, "feelslike_c": 38.6, "humidity": 23, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 8.7, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 3, "weather": {"temp_c": 38.1, "feelslike_c": 35.6, "humidity": 16, "wind_kph": 15.4, "precip_mm": 0.0, "uv": 6.2, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 4, "weather": {"temp_c": 35.0, "feelslike_c": 32.4, "humidity": 18, "wind_kph": 13.2, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 5, "weather": {"temp_c": 31.5, "feelslike_c": 30.6, "humidity": 34, "wind_kph": 14.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 6, "weather": {"temp_c": 28.0, "feelslike_c": 27.2, "humidity": 41, "wind_kph": 13.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": -1, "slot": 7, "weather": {"temp_c": 26.1, "feelslike_c": 26.6, "humidity": 58, "wind_kph": 14.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 0, "weather": {"temp_c": 27.4, "feelslike_c": 30.1, "humidity": 70, "wind_kph": 12.8, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 1, "weather": {"temp_c": 34.3, "feelslike_c": 36.6, "humidity": 40, "wind_kph": 13.4, "precip_mm": 0.0, "uv": 8.0, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 2, "weather": {"temp_c": 39.2, "feelslike_c": 38.4, "humidity": 18, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 8.7, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 3, "weather": {"temp_c": 38.8, "feelslike_c": 35.3, "humidity": 14, "wind_kph": 20.7, "precip_mm": 0.0, "uv": 6.2, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 4, "weather": {"temp_c": 36.0, "feelslike_c": 33.0, "humidity": 17, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 5, "weather": {"temp_c": 32.2, "feelslike_c": 30.5, "humidity": 26, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 6, "weather": {"temp_c": 28.7, "feelslike_c": 29.4, "humidity": 55, "wind_kph": 17.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 0, "slot": 7, "weather": {"temp_c": 26.1, "feelslike_c": 28.1, "humidity": 71, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 0, "weather": {"temp_c": 26.9, "feelslike_c": 28.2, "humidity": 66, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 1, "weather": {"temp_c": 34.4, "feelslike_c": 34.6, "humidity": 31, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 8.0, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 2, "weather": {"temp_c": 38.9, "feelslike_c": 37.5, "humidity": 13, "wind_kph": 15.4, "precip_mm": 0.0, "uv": 8.7, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 3, "weather": {"temp_c": 38.2, "feelslike_c": 34.9, "humidity": 12, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 4, "weather": {"temp_c": 34.4, "feelslike_c": 31.7, "humidity": 19, "wind_kph": 14.1, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 5, "weather": {"temp_c": 31.2, "feelslike_c": 29.4, "humidity": 28, "wind_kph": 13.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 6, "weather": {"temp_c": 29.1, "feelslike_c": 29.3, "humidity": 50, "wind_kph": 16.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 1, "slot": 7, "weather": {"temp_c": 26.4, "feelslike_c": 27.7, "humidity": 65, "wind_kph": 14.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 0, "weather": {"temp_c": 26.7, "feelslike_c": 29.1, "humidity": 68, "wind_kph": 11.1, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 1, "weather": {"temp_c": 34.1, "feelslike_c": 36.2, "humidity": 37, "wind_kph": 10.2, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 2, "weather": {"temp_c": 38.5, "feelslike_c": 38.2, "humidity": 16, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 8.7, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 3, "weather": {"temp_c": 35.3, "feelslike_c": 33.7, "humidity": 22, "wind_kph": 12.8, "precip_mm": 0.0, "uv": 6.2, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 4, "weather": {"temp_c": 33.0, "feelslike_c": 32.3, "humidity": 29, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 0.7, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 5, "weather": {"temp_c": 30.1, "feelslike_c": 30.7, "humidity": 38, "wind_kph": 5.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 6, "weather": {"temp_c": 28.3, "feelslike_c": 27.6, "humidity": 43, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Indore", "day": 2, "slot": 7, "weather": {"temp_c": 25.7, "feelslike_c": 26.6, "humidity": 62, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+
+    # Nagpur, Maharashtra
+    # day=-2 (day before yesterday)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 0, "weather": {"temp_c": 32.5, "feelslike_c": 31.8, "humidity": 26, "wind_kph": 5.2, "precip_mm": 0.0, "uv": 3.0, "condition": "Overcast"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 1, "weather": {"temp_c": 38.0, "feelslike_c": 38.0, "humidity": 19, "wind_kph": 8.5, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 2, "weather": {"temp_c": 41.0, "feelslike_c": 39.4, "humidity": 14, "wind_kph": 16.7, "precip_mm": 0.0, "uv": 8.9, "condition": "Partly cloudy"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 3, "weather": {"temp_c": 40.5, "feelslike_c": 36.7, "humidity": 13, "wind_kph": 20.8, "precip_mm": 0.0, "uv": 5.9, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 4, "weather": {"temp_c": 37.9, "feelslike_c": 35.0, "humidity": 15, "wind_kph": 14.3, "precip_mm": 0.0, "uv": 0.4, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 5, "weather": {"temp_c": 34.4, "feelslike_c": 32.1, "humidity": 18, "wind_kph": 10.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 6, "weather": {"temp_c": 32.4, "feelslike_c": 29.7, "humidity": 20, "wind_kph": 13.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -2, "slot": 7, "weather": {"temp_c": 30.6, "feelslike_c": 28.9, "humidity": 26, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 0, "weather": {"temp_c": 30.2, "feelslike_c": 30.9, "humidity": 37, "wind_kph": 4.3, "precip_mm": 0.0, "uv": 3.1, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 1, "weather": {"temp_c": 36.2, "feelslike_c": 38.0, "humidity": 25, "wind_kph": 3.3, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 2, "weather": {"temp_c": 39.9, "feelslike_c": 41.0, "humidity": 17, "wind_kph": 7.1, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 3, "weather": {"temp_c": 39.8, "feelslike_c": 38.0, "humidity": 17, "wind_kph": 12.9, "precip_mm": 0.0, "uv": 5.9, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 4, "weather": {"temp_c": 37.0, "feelslike_c": 35.9, "humidity": 20, "wind_kph": 8.5, "precip_mm": 0.0, "uv": 0.3, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 5, "weather": {"temp_c": 34.3, "feelslike_c": 36.1, "humidity": 33, "wind_kph": 0.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 6, "weather": {"temp_c": 31.1, "feelslike_c": 29.9, "humidity": 25, "wind_kph": 6.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Nagpur", "day": -1, "slot": 7, "weather": {"temp_c": 28.6, "feelslike_c": 28.0, "humidity": 35, "wind_kph": 6.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 0, "weather": {"temp_c": 31.9, "feelslike_c": 32.1, "humidity": 35, "wind_kph": 8.6, "precip_mm": 0.0, "uv": 3.1, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 1, "weather": {"temp_c": 38.8, "feelslike_c": 39.6, "humidity": 24, "wind_kph": 11.7, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 2, "weather": {"temp_c": 41.9, "feelslike_c": 41.3, "humidity": 14, "wind_kph": 13.2, "precip_mm": 0.0, "uv": 8.9, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 3, "weather": {"temp_c": 40.9, "feelslike_c": 38.3, "humidity": 14, "wind_kph": 16.0, "precip_mm": 0.0, "uv": 5.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 4, "weather": {"temp_c": 37.4, "feelslike_c": 34.6, "humidity": 21, "wind_kph": 20.8, "precip_mm": 0.0, "uv": 0.5, "condition": "Partly cloudy"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 5, "weather": {"temp_c": 34.1, "feelslike_c": 34.1, "humidity": 29, "wind_kph": 7.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 6, "weather": {"temp_c": 31.8, "feelslike_c": 31.1, "humidity": 28, "wind_kph": 7.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 0, "slot": 7, "weather": {"temp_c": 29.6, "feelslike_c": 29.1, "humidity": 34, "wind_kph": 7.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 0, "weather": {"temp_c": 31.5, "feelslike_c": 32.4, "humidity": 35, "wind_kph": 3.0, "precip_mm": 0.0, "uv": 3.1, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 1, "weather": {"temp_c": 38.3, "feelslike_c": 40.1, "humidity": 23, "wind_kph": 4.0, "precip_mm": 0.0, "uv": 8.3, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 2, "weather": {"temp_c": 41.8, "feelslike_c": 41.8, "humidity": 14, "wind_kph": 8.9, "precip_mm": 0.0, "uv": 8.9, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 3, "weather": {"temp_c": 40.9, "feelslike_c": 38.5, "humidity": 14, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 5.3, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 4, "weather": {"temp_c": 37.8, "feelslike_c": 36.0, "humidity": 14, "wind_kph": 5.3, "precip_mm": 0.0, "uv": 0.5, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 5, "weather": {"temp_c": 34.1, "feelslike_c": 32.4, "humidity": 17, "wind_kph": 4.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 6, "weather": {"temp_c": 32.0, "feelslike_c": 32.5, "humidity": 34, "wind_kph": 4.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 1, "slot": 7, "weather": {"temp_c": 30.0, "feelslike_c": 30.6, "humidity": 39, "wind_kph": 6.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 0, "weather": {"temp_c": 31.2, "feelslike_c": 29.1, "humidity": 22, "wind_kph": 8.3, "precip_mm": 0.0, "uv": 3.1, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 1, "weather": {"temp_c": 38.2, "feelslike_c": 38.4, "humidity": 15, "wind_kph": 3.9, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 2, "weather": {"temp_c": 41.8, "feelslike_c": 41.8, "humidity": 11, "wind_kph": 7.3, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 3, "weather": {"temp_c": 41.3, "feelslike_c": 37.7, "humidity": 9, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 6.0, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 4, "weather": {"temp_c": 38.3, "feelslike_c": 35.1, "humidity": 13, "wind_kph": 13.4, "precip_mm": 0.0, "uv": 0.5, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 5, "weather": {"temp_c": 34.7, "feelslike_c": 32.9, "humidity": 22, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 6, "weather": {"temp_c": 31.7, "feelslike_c": 30.5, "humidity": 22, "wind_kph": 3.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Nagpur", "day": 2, "slot": 7, "weather": {"temp_c": 29.4, "feelslike_c": 27.6, "humidity": 25, "wind_kph": 7.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+
+    # Dharwad, Karnataka
+    # day=-2 (day before yesterday)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 0, "weather": {"temp_c": 25.6, "feelslike_c": 29.3, "humidity": 87, "wind_kph": 12.5, "precip_mm": 0.0, "uv": 2.5, "condition": "Thunderstorm"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 1, "weather": {"temp_c": 31.0, "feelslike_c": 34.7, "humidity": 56, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 2, "weather": {"temp_c": 34.0, "feelslike_c": 37.5, "humidity": 40, "wind_kph": 9.8, "precip_mm": 0.0, "uv": 9.2, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 3, "weather": {"temp_c": 32.4, "feelslike_c": 33.4, "humidity": 44, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 6.7, "condition": "Partly cloudy"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 4, "weather": {"temp_c": 28.7, "feelslike_c": 30.3, "humidity": 62, "wind_kph": 17.5, "precip_mm": 0.0, "uv": 0.3, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 5, "weather": {"temp_c": 24.9, "feelslike_c": 28.2, "humidity": 91, "wind_kph": 16.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 6, "weather": {"temp_c": 24.7, "feelslike_c": 28.2, "humidity": 93, "wind_kph": 15.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dharwad", "day": -2, "slot": 7, "weather": {"temp_c": 24.3, "feelslike_c": 27.9, "humidity": 94, "wind_kph": 14.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Thunderstorm"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 0, "weather": {"temp_c": 24.5, "feelslike_c": 27.7, "humidity": 86, "wind_kph": 11.5, "precip_mm": 0.0, "uv": 2.5, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 1, "weather": {"temp_c": 30.6, "feelslike_c": 33.2, "humidity": 52, "wind_kph": 14.1, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 2, "weather": {"temp_c": 33.8, "feelslike_c": 35.5, "humidity": 38, "wind_kph": 17.8, "precip_mm": 0.0, "uv": 9.2, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 3, "weather": {"temp_c": 33.3, "feelslike_c": 31.9, "humidity": 32, "wind_kph": 21.4, "precip_mm": 0.0, "uv": 6.7, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 4, "weather": {"temp_c": 27.9, "feelslike_c": 28.3, "humidity": 54, "wind_kph": 17.1, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 5, "weather": {"temp_c": 24.1, "feelslike_c": 25.9, "humidity": 80, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 6, "weather": {"temp_c": 23.6, "feelslike_c": 26.6, "humidity": 96, "wind_kph": 16.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dharwad", "day": -1, "slot": 7, "weather": {"temp_c": 22.7, "feelslike_c": 26.2, "humidity": 99, "wind_kph": 12.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Partly cloudy"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 0, "weather": {"temp_c": 23.5, "feelslike_c": 25.4, "humidity": 80, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 1, "weather": {"temp_c": 31.6, "feelslike_c": 33.0, "humidity": 39, "wind_kph": 11.6, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 2, "weather": {"temp_c": 36.2, "feelslike_c": 36.7, "humidity": 23, "wind_kph": 15.6, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 3, "weather": {"temp_c": 33.7, "feelslike_c": 32.6, "humidity": 35, "wind_kph": 22.8, "precip_mm": 0.0, "uv": 6.7, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 4, "weather": {"temp_c": 26.8, "feelslike_c": 27.3, "humidity": 66, "wind_kph": 22.6, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 5, "weather": {"temp_c": 23.4, "feelslike_c": 25.2, "humidity": 86, "wind_kph": 17.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 6, "weather": {"temp_c": 22.3, "feelslike_c": 25.4, "humidity": 96, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dharwad", "day": 0, "slot": 7, "weather": {"temp_c": 21.4, "feelslike_c": 24.1, "humidity": 98, "wind_kph": 11.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 0, "weather": {"temp_c": 23.0, "feelslike_c": 25.0, "humidity": 87, "wind_kph": 15.2, "precip_mm": 0.0, "uv": 2.5, "condition": "Mostly clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 1, "weather": {"temp_c": 31.0, "feelslike_c": 33.1, "humidity": 47, "wind_kph": 12.6, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 2, "weather": {"temp_c": 36.2, "feelslike_c": 37.5, "humidity": 26, "wind_kph": 13.2, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 3, "weather": {"temp_c": 34.2, "feelslike_c": 33.3, "humidity": 33, "wind_kph": 19.7, "precip_mm": 0.0, "uv": 6.7, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 4, "weather": {"temp_c": 27.1, "feelslike_c": 28.1, "humidity": 70, "wind_kph": 22.8, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 5, "weather": {"temp_c": 23.5, "feelslike_c": 25.7, "humidity": 89, "wind_kph": 16.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 6, "weather": {"temp_c": 21.8, "feelslike_c": 23.9, "humidity": 96, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dharwad", "day": 1, "slot": 7, "weather": {"temp_c": 21.3, "feelslike_c": 23.9, "humidity": 99, "wind_kph": 13.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 0, "weather": {"temp_c": 23.5, "feelslike_c": 26.2, "humidity": 84, "wind_kph": 9.6, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 1, "weather": {"temp_c": 31.0, "feelslike_c": 34.3, "humidity": 46, "wind_kph": 5.7, "precip_mm": 0.0, "uv": 8.4, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 2, "weather": {"temp_c": 35.2, "feelslike_c": 37.2, "humidity": 31, "wind_kph": 13.6, "precip_mm": 0.0, "uv": 9.2, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 3, "weather": {"temp_c": 34.5, "feelslike_c": 32.9, "humidity": 27, "wind_kph": 19.6, "precip_mm": 0.0, "uv": 6.7, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 4, "weather": {"temp_c": 27.5, "feelslike_c": 28.5, "humidity": 65, "wind_kph": 21.0, "precip_mm": 0.0, "uv": 0.1, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 5, "weather": {"temp_c": 23.6, "feelslike_c": 25.7, "humidity": 88, "wind_kph": 17.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 6, "weather": {"temp_c": 22.2, "feelslike_c": 25.0, "humidity": 97, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 6 (00-03)
+    {"state": "Karnataka", "district": "Dharwad", "day": 2, "slot": 7, "weather": {"temp_c": 21.5, "feelslike_c": 23.9, "humidity": 98, "wind_kph": 15.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Overcast"}}, # slot 7 (03-06)
+
+    # Ujjain, Madhya Pradesh
+    # day=-2 (day before yesterday)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 0, "weather": {"temp_c": 27.6, "feelslike_c": 28.9, "humidity": 60, "wind_kph": 14.3, "precip_mm": 0.0, "uv": 2.5, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 1, "weather": {"temp_c": 34.4, "feelslike_c": 35.0, "humidity": 34, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 7.7, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 2, "weather": {"temp_c": 38.5, "feelslike_c": 38.4, "humidity": 20, "wind_kph": 16.7, "precip_mm": 0.0, "uv": 8.6, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 3, "weather": {"temp_c": 38.0, "feelslike_c": 35.4, "humidity": 18, "wind_kph": 18.6, "precip_mm": 0.0, "uv": 6.1, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 4, "weather": {"temp_c": 34.9, "feelslike_c": 32.3, "humidity": 21, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 5, "weather": {"temp_c": 31.6, "feelslike_c": 29.5, "humidity": 30, "wind_kph": 17.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 6, "weather": {"temp_c": 28.8, "feelslike_c": 26.6, "humidity": 33, "wind_kph": 16.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -2, "slot": 7, "weather": {"temp_c": 26.5, "feelslike_c": 26.1, "humidity": 51, "wind_kph": 14.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 0, "weather": {"temp_c": 27.3, "feelslike_c": 29.6, "humidity": 60, "wind_kph": 7.2, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 1, "weather": {"temp_c": 33.3, "feelslike_c": 35.8, "humidity": 42, "wind_kph": 12.0, "precip_mm": 0.0, "uv": 7.8, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 2, "weather": {"temp_c": 38.1, "feelslike_c": 39.3, "humidity": 24, "wind_kph": 14.2, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 3, "weather": {"temp_c": 38.7, "feelslike_c": 35.9, "humidity": 15, "wind_kph": 16.2, "precip_mm": 0.0, "uv": 6.1, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 4, "weather": {"temp_c": 34.9, "feelslike_c": 31.9, "humidity": 17, "wind_kph": 13.7, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 5, "weather": {"temp_c": 31.6, "feelslike_c": 30.2, "humidity": 31, "wind_kph": 14.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 6, "weather": {"temp_c": 28.4, "feelslike_c": 27.4, "humidity": 42, "wind_kph": 15.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": -1, "slot": 7, "weather": {"temp_c": 26.1, "feelslike_c": 26.6, "humidity": 59, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 0, "weather": {"temp_c": 27.5, "feelslike_c": 30.5, "humidity": 73, "wind_kph": 13.6, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 1, "weather": {"temp_c": 34.6, "feelslike_c": 37.1, "humidity": 43, "wind_kph": 14.9, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 2, "weather": {"temp_c": 39.5, "feelslike_c": 38.9, "humidity": 19, "wind_kph": 17.8, "precip_mm": 0.0, "uv": 8.6, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 3, "weather": {"temp_c": 39.4, "feelslike_c": 35.6, "humidity": 13, "wind_kph": 21.2, "precip_mm": 0.0, "uv": 6.1, "condition": "Mostly clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 4, "weather": {"temp_c": 35.8, "feelslike_c": 32.9, "humidity": 17, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 5, "weather": {"temp_c": 32.0, "feelslike_c": 29.9, "humidity": 24, "wind_kph": 13.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 6, "weather": {"temp_c": 28.9, "feelslike_c": 29.7, "humidity": 56, "wind_kph": 17.7, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 0, "slot": 7, "weather": {"temp_c": 26.1, "feelslike_c": 28.4, "humidity": 73, "wind_kph": 14.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 0, "weather": {"temp_c": 27.2, "feelslike_c": 28.6, "humidity": 65, "wind_kph": 17.6, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 1, "weather": {"temp_c": 34.3, "feelslike_c": 35.2, "humidity": 35, "wind_kph": 16.4, "precip_mm": 0.0, "uv": 7.9, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 2, "weather": {"temp_c": 38.8, "feelslike_c": 38.2, "humidity": 17, "wind_kph": 15.3, "precip_mm": 0.0, "uv": 8.6, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 3, "weather": {"temp_c": 38.5, "feelslike_c": 35.7, "humidity": 15, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 4, "weather": {"temp_c": 34.6, "feelslike_c": 32.2, "humidity": 21, "wind_kph": 14.4, "precip_mm": 0.0, "uv": 0.7, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 5, "weather": {"temp_c": 31.1, "feelslike_c": 29.3, "humidity": 28, "wind_kph": 13.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 6, "weather": {"temp_c": 29.0, "feelslike_c": 29.2, "humidity": 51, "wind_kph": 18.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 1, "slot": 7, "weather": {"temp_c": 26.5, "feelslike_c": 27.7, "humidity": 66, "wind_kph": 16.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 0, "weather": {"temp_c": 26.8, "feelslike_c": 29.6, "humidity": 71, "wind_kph": 11.3, "precip_mm": 0.0, "uv": 2.6, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 1, "weather": {"temp_c": 34.0, "feelslike_c": 36.9, "humidity": 42, "wind_kph": 10.8, "precip_mm": 0.0, "uv": 7.8, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 2, "weather": {"temp_c": 34.2, "feelslike_c": 35.5, "humidity": 36, "wind_kph": 13.5, "precip_mm": 3.1, "uv": 8.6, "condition": "Patchy rain nearby"}}, # slot 2 (12-15)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 3, "weather": {"temp_c": 34.2, "feelslike_c": 33.9, "humidity": 31, "wind_kph": 12.3, "precip_mm": 0.2, "uv": 6.1, "condition": "Patchy rain nearby"}}, # slot 3 (15-18)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 4, "weather": {"temp_c": 30.5, "feelslike_c": 31.1, "humidity": 41, "wind_kph": 9.3, "precip_mm": 0.0, "uv": 0.7, "condition": "Mostly clear"}}, # slot 4 (18-21)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 5, "weather": {"temp_c": 27.8, "feelslike_c": 29.6, "humidity": 52, "wind_kph": 4.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 6, "weather": {"temp_c": 28.1, "feelslike_c": 27.3, "humidity": 44, "wind_kph": 15.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Madhya Pradesh", "district": "Ujjain", "day": 2, "slot": 7, "weather": {"temp_c": 25.7, "feelslike_c": 27.1, "humidity": 67, "wind_kph": 13.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+
+    # Akola, Maharashtra
+    # day=-2 (day before yesterday)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 0, "weather": {"temp_c": 30.2, "feelslike_c": 29.3, "humidity": 37, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 1, "weather": {"temp_c": 36.6, "feelslike_c": 35.8, "humidity": 24, "wind_kph": 17.9, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 2, "weather": {"temp_c": 40.0, "feelslike_c": 38.6, "humidity": 15, "wind_kph": 20.3, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 3, "weather": {"temp_c": 40.0, "feelslike_c": 36.1, "humidity": 11, "wind_kph": 19.9, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 4, "weather": {"temp_c": 36.2, "feelslike_c": 33.0, "humidity": 15, "wind_kph": 14.2, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 5, "weather": {"temp_c": 33.7, "feelslike_c": 30.6, "humidity": 20, "wind_kph": 17.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 6, "weather": {"temp_c": 31.2, "feelslike_c": 28.6, "humidity": 26, "wind_kph": 16.1, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Akola", "day": -2, "slot": 7, "weather": {"temp_c": 29.0, "feelslike_c": 26.9, "humidity": 33, "wind_kph": 17.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=-1 (yesterday)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 0, "weather": {"temp_c": 29.3, "feelslike_c": 29.3, "humidity": 44, "wind_kph": 13.7, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 1, "weather": {"temp_c": 35.6, "feelslike_c": 37.6, "humidity": 35, "wind_kph": 12.6, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 2, "weather": {"temp_c": 39.3, "feelslike_c": 39.3, "humidity": 21, "wind_kph": 15.7, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 3, "weather": {"temp_c": 39.6, "feelslike_c": 37.0, "humidity": 16, "wind_kph": 18.1, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 4, "weather": {"temp_c": 36.0, "feelslike_c": 34.1, "humidity": 20, "wind_kph": 11.2, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 5, "weather": {"temp_c": 32.9, "feelslike_c": 31.7, "humidity": 26, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 6, "weather": {"temp_c": 30.8, "feelslike_c": 28.7, "humidity": 31, "wind_kph": 17.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Akola", "day": -1, "slot": 7, "weather": {"temp_c": 27.9, "feelslike_c": 26.9, "humidity": 41, "wind_kph": 13.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+0 (today)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 0, "weather": {"temp_c": 30.2, "feelslike_c": 31.5, "humidity": 49, "wind_kph": 12.3, "precip_mm": 0.0, "uv": 2.8, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 1, "weather": {"temp_c": 36.1, "feelslike_c": 38.2, "humidity": 35, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 2, "weather": {"temp_c": 40.6, "feelslike_c": 41.0, "humidity": 20, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 8.9, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 3, "weather": {"temp_c": 40.2, "feelslike_c": 38.3, "humidity": 19, "wind_kph": 18.7, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 4, "weather": {"temp_c": 37.6, "feelslike_c": 36.0, "humidity": 22, "wind_kph": 15.7, "precip_mm": 0.0, "uv": 0.3, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 5, "weather": {"temp_c": 34.8, "feelslike_c": 33.4, "humidity": 26, "wind_kph": 15.5, "precip_mm": 0.0, "uv": 0.0, "condition": "Mostly clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 6, "weather": {"temp_c": 31.2, "feelslike_c": 30.7, "humidity": 40, "wind_kph": 17.6, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Akola", "day": 0, "slot": 7, "weather": {"temp_c": 29.3, "feelslike_c": 29.3, "humidity": 47, "wind_kph": 15.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+1 (tomorrow)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 0, "weather": {"temp_c": 30.0, "feelslike_c": 30.6, "humidity": 47, "wind_kph": 14.5, "precip_mm": 0.0, "uv": 2.9, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 1, "weather": {"temp_c": 36.3, "feelslike_c": 36.9, "humidity": 30, "wind_kph": 16.3, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 2, "weather": {"temp_c": 40.7, "feelslike_c": 40.2, "humidity": 16, "wind_kph": 15.1, "precip_mm": 0.0, "uv": 8.8, "condition": "Clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 3, "weather": {"temp_c": 40.7, "feelslike_c": 37.9, "humidity": 13, "wind_kph": 15.1, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 4, "weather": {"temp_c": 36.1, "feelslike_c": 33.9, "humidity": 16, "wind_kph": 7.6, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 5, "weather": {"temp_c": 33.6, "feelslike_c": 29.9, "humidity": 17, "wind_kph": 17.0, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 6, "weather": {"temp_c": 32.4, "feelslike_c": 31.0, "humidity": 33, "wind_kph": 18.9, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Akola", "day": 1, "slot": 7, "weather": {"temp_c": 29.6, "feelslike_c": 28.8, "humidity": 44, "wind_kph": 19.4, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
+    # day=+2 (day after tomorrow)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 0, "weather": {"temp_c": 28.8, "feelslike_c": 28.2, "humidity": 39, "wind_kph": 12.1, "precip_mm": 0.0, "uv": 2.9, "condition": "Clear"}}, # slot 0 (06-09)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 1, "weather": {"temp_c": 35.2, "feelslike_c": 36.1, "humidity": 28, "wind_kph": 10.3, "precip_mm": 0.0, "uv": 8.2, "condition": "Clear"}}, # slot 1 (09-12)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 2, "weather": {"temp_c": 39.8, "feelslike_c": 40.9, "humidity": 17, "wind_kph": 7.1, "precip_mm": 0.0, "uv": 8.8, "condition": "Mostly clear"}}, # slot 2 (12-15)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 3, "weather": {"temp_c": 40.3, "feelslike_c": 38.7, "humidity": 14, "wind_kph": 7.9, "precip_mm": 0.0, "uv": 6.2, "condition": "Clear"}}, # slot 3 (15-18)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 4, "weather": {"temp_c": 35.7, "feelslike_c": 33.9, "humidity": 19, "wind_kph": 9.4, "precip_mm": 0.0, "uv": 0.6, "condition": "Clear"}}, # slot 4 (18-21)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 5, "weather": {"temp_c": 33.1, "feelslike_c": 30.7, "humidity": 20, "wind_kph": 11.3, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 5 (21-00)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 6, "weather": {"temp_c": 30.9, "feelslike_c": 28.1, "humidity": 24, "wind_kph": 15.8, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 6 (00-03)
+    {"state": "Maharashtra", "district": "Akola", "day": 2, "slot": 7, "weather": {"temp_c": 28.0, "feelslike_c": 26.4, "humidity": 33, "wind_kph": 10.2, "precip_mm": 0.0, "uv": 0.0, "condition": "Clear"}}, # slot 7 (03-06)
 ]
 
 def init_weather_mongo() -> tuple[bool, str]:
     try:
-        client = MongoClient(MONGO_URI)
+        client     = MongoClient(MONGO_URI)
         collection = client[MONGO_DB][MONGO_COLLECTION]
 
+        # Remove legacy records (old schema had no 'day' field)
+        old_count = collection.count_documents({"day": {"$exists": False}})
+        if old_count > 0:
+            collection.delete_many({"day": {"$exists": False}})
+
+        # Ensure indexes
         collection.create_index("district")
+        collection.create_index("day")
         collection.create_index("slot")
         collection.create_index(
-            [("district", 1), ("slot", 1)],
+            [("district", 1), ("day", 1), ("slot", 1)],
             unique=True,
         )
 
         inserted = 0
         for record in WEATHER_RECORDS:
             result = collection.update_one(
-                {"district": record["district"], "slot": record["slot"]},
-                {"$setOnInsert": record},
+                {"district": record["district"],
+                 "day":      record["day"],
+                 "slot":     record["slot"]},
+                {"$setOnInsert": record},   # never overwrites fresh data from fetch script
                 upsert=True,
             )
-            if result.upserted_id is not None:
+            if result.upserted_id:
                 inserted += 1
 
         total = collection.count_documents({})
-        return True, f"Weather MongoDB ready ({total} records total, {inserted} new records inserted)."
-
+        return True, (
+            f"Weather MongoDB ready ({total} records, {inserted} new"
+            + (f", {old_count} legacy removed" if old_count else "")
+            + ")."
+        )
     except Exception as exc:
         return False, f"Weather MongoDB init skipped: {exc}"
 
-if __name__ == "__main__":
-    success, message = init_weather_mongo()
-    print(f"[WeatherMongo] {message}")
-
 def drop_and_reseed() -> tuple[bool, str]:
+    """Drop entire collection and re-insert all 600 records from this file."""
     try:
         client = MongoClient(MONGO_URI)
         client[MONGO_DB][MONGO_COLLECTION].drop()
-        print("[WeatherMongo] Dropped old weather_data collection.")
+        print("[WeatherMongo] Dropped old collection.")
         return init_weather_mongo()
     except Exception as exc:
         return False, f"Reseed failed: {exc}"
 
 if __name__ == "__main__":
     import sys
-    if "--reseed" in sys.argv:
-        success, message = drop_and_reseed()
-    else:
-        success, message = init_weather_mongo()
-    print(f"[WeatherMongo] {message}")
+    fn = drop_and_reseed if "--reseed" in sys.argv else init_weather_mongo
+    ok, msg = fn()
+    print(f"[WeatherMongo] {msg}")
+    print(f"[WeatherMongo] Records defined in file: {len(WEATHER_RECORDS)}")

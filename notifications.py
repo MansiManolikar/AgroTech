@@ -1,7 +1,6 @@
 from database import get_db
 
-def create_notification(user_id: int, title: str, message: str,
-                        ntype: str = 'info', link: str = None):
+def create_notification(user_id: int, title: str, message: str, ntype: str = 'info', link: str = None):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -10,7 +9,6 @@ def create_notification(user_id: int, title: str, message: str,
     """, (user_id, title, message, ntype, link))
     conn.commit()
     conn.close()
-
 
 def notify_all_farmers(title: str, message: str, ntype: str = 'info', link: str = None):
     conn = get_db()
@@ -25,8 +23,7 @@ def notify_all_farmers(title: str, message: str, ntype: str = 'info', link: str 
     conn.commit()
     conn.close()
 
-def notify_farmers_by_crop(crop_id: int, title: str, message: str,
-                            ntype: str = 'info', link: str = None):
+def notify_farmers_by_crop(crop_id: int, title: str, message: str, ntype: str = 'info', link: str = None):
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
@@ -43,8 +40,7 @@ def notify_farmers_by_crop(crop_id: int, title: str, message: str,
     conn.commit()
     conn.close()
 
-def notify_farmers_by_zone(zone_id: int, title: str, message: str,
-                            ntype: str = 'info', link: str = None):
+def notify_farmers_by_zone(zone_id: int, title: str, message: str, ntype: str = 'info', link: str = None):
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""

@@ -19,7 +19,6 @@ def get_mongo():
     client = MongoClient(MONGO_URI)
     return client[MONGO_DB]
 
-
 def save_weather(farm_id: int, location: str, data: dict):
     db = get_mongo()
     snapshot = {

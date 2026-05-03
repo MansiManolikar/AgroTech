@@ -1,39 +1,49 @@
 from __future__ import annotations
-
 import os
 from datetime import datetime, timezone, timedelta
-
 from pymongo import MongoClient
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
-MONGO_DB  = "agritech"
+MONGO_URI        = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_DB         = "agritech"
 MONGO_COLLECTION = "weather_data"
 
-SUPPORTED_DISTRICTS = (
-    "Kuttanad",
-    "Thanjavur",
-    "Udupi",
-    "Kolhapur",
-    "Mandya",
-    "Coimbatore",
-    "Indore",
-    "Nagpur",
-    "Dharwad",
-)
+SUPPORTED_DISTRICTS = [
+    # Rice
+    "Kuttanad", "Thanjavur", "Udupi", "Nagapattinam", "Dakshina Kannada",
+    # Sugarcane
+    "Kolhapur", "Mandya", "Satara", "Belagavi", "Coimbatore",
+    # Soybean
+    "Indore", "Nagpur", "Dharwad", "Ujjain", "Akola",
+]
 
-_SLOT_START_HOURS = [6, 9, 12, 15, 18, 21, 0, 3] 
+DISTRICT_STATE = {
+    "Kuttanad":        "Kerala",
+    "Thanjavur":       "Tamil Nadu",
+    "Udupi":           "Karnataka",
+    "Nagapattinam":    "Tamil Nadu",
+    "Dakshina Kannada":"Karnataka",
+    "Kolhapur":        "Maharashtra",
+    "Mandya":          "Karnataka",
+    "Satara":          "Maharashtra",
+    "Belagavi":        "Karnataka",
+    "Coimbatore":      "Tamil Nadu",
+    "Indore":          "Madhya Pradesh",
+    "Nagpur":          "Maharashtra",
+    "Dharwad":         "Karnataka",
+    "Ujjain":          "Madhya Pradesh",
+    "Akola":           "Maharashtra",
+}
 
-def _get_collection():
-    client = MongoClient(MONGO_URI)
-    return client[MONGO_DB][MONGO_COLLECTION]
+IST = timezone(timedelta(hours=5, minutes=30))
 
-def _current_ist_hour() -> int:    
-    ist = timezone(timedelta(hours=5, minutes=30))
-    return datetime.now(ist).hour
+def _col():
+    return MongoClient(MONGO_URI)[MONGO_DB][MONGO_COLLECTION]
 
+def _ist_now() -> datetime:
+    return datetime.now(IST)
 
-def current_slot() -> int:
-    h = _current_ist_hour()
+def _current_slot() -> int:
+    h = _ist_now().hour
     if   6  <= h < 9:  return 0
     elif 9  <= h < 12: return 1
     elif 12 <= h < 15: return 2
@@ -41,40 +51,43 @@ def current_slot() -> int:
     elif 18 <= h < 21: return 4
     elif 21 <= h < 24: return 5
     elif 0  <= h < 3:  return 6
-    else:              return 7   
+    else:              return 7
+
+def _day_label(day: int) -> str:
+    return (_ist_now() + timedelta(days=day)).strftime("%d %b")
 
 def normalize_district(district: str) -> str:
     district = (district or "").strip().lower()
-    for supported in SUPPORTED_DISTRICTS:
-        if supported.lower() == district:
-            return supported
-    for supported in SUPPORTED_DISTRICTS:
-        if supported.lower() in district:
-            return supported
+    for d in SUPPORTED_DISTRICTS:
+        if d.lower() == district:
+            return d
+    for d in SUPPORTED_DISTRICTS:
+        if d.lower() in district:
+            return d
     return district.title() if district else ""
 
 def district_from_location(location: str) -> str | None:
-    normalized = (location or "").strip().lower()
-    for district in SUPPORTED_DISTRICTS:
-        if district.lower() in normalized:
-            return district
+    norm = (location or "").strip().lower()
+    for d in SUPPORTED_DISTRICTS:
+        if d.lower() in norm:
+            return d
     return None
 
-def get_slot_record(district: str, slot: int) -> dict | None:
-    doc = _get_collection().find_one(
-        {"district": normalize_district(district), "slot": slot}
-    )
-    return doc
-
-def get_all_district_slots(district: str) -> list[dict]:
-    docs = list(
-        _get_collection()
-        .find({"district": normalize_district(district)})
+def _get_day_slots(district: str, day: int) -> list[dict]:
+    return list(
+        _col()
+        .find({"district": normalize_district(district), "day": day})
         .sort("slot", 1)
     )
-    return docs
 
-def _format_current(record: dict | None) -> dict | None:
+def _get_slot(district: str, day: int, slot: int) -> dict | None:
+    return _col().find_one({
+        "district": normalize_district(district),
+        "day": day,
+        "slot": slot,
+    })
+
+def _fmt_current(record: dict | None) -> dict | None:
     if not record:
         return None
     w = record.get("weather", {})
@@ -88,53 +101,48 @@ def _format_current(record: dict | None) -> dict | None:
         "condition":   w.get("condition", "Unknown"),
     }
 
-
-def _slot_to_label(slot: int) -> str:
-    starts = ["06:00", "09:00", "12:00", "15:00", "18:00", "21:00", "00:00", "03:00"]
-    ends   = ["09:00", "12:00", "15:00", "18:00", "21:00", "00:00", "03:00", "06:00"]
-    return f"{starts[slot]}–{ends[slot]}"
-
-def _format_forecast_slot(record: dict) -> dict:
-    w = record.get("weather", {})
-    slot = record.get("slot", 0)
-    temp_c = w.get("temp_c", 0)
+def _day_summary(district: str, day: int) -> dict | None:
+    slots = _get_day_slots(district, day)
+    if not slots:
+        return None
+    slot_map = {r["slot"]: r["weather"] for r in slots}
+    peak  = slot_map.get(2, {})
+    cold  = slot_map.get(6, {})
+    total_rain = sum(s.get("precip_mm", 0) for s in slot_map.values())
     return {
-        "date":           _slot_to_label(slot),
-        "max_temp":       temp_c,
-        "min_temp":       round(temp_c - 3, 1),
-        "avg_humidity":   w.get("humidity", 0),
-        "total_rain":     w.get("precip_mm", 0),
-        "condition":      w.get("condition", "Unknown"),
-        "chance_of_rain": 70 if (w.get("precip_mm") or 0) > 0 else 20,
+        "day_offset":      day,
+        "date":           _day_label(day),
+        "max_temp":       peak.get("temp_c", 0),
+        "min_temp":       cold.get("temp_c", 0),
+        "avg_humidity":   round(sum(s.get("humidity", 0) for s in slot_map.values()) / len(slot_map)),
+        "total_rain":     round(total_rain, 1),
+        "condition":      peak.get("condition", "Unknown"),
+        "chance_of_rain": 70 if total_rain > 0 else 20,
     }
 
 def fetch_current_weather(location: str) -> dict | None:
     district = district_from_location(location or "")
     if not district:
         return None
-    slot = current_slot()
-    record = get_slot_record(district, slot)
-    return _format_current(record)
-
+    return _fmt_current(_get_slot(district, day=0, slot=_current_slot()))
 
 def fetch_forecast(location: str, days: int = 3) -> list[dict]:
     district = district_from_location(location or "")
     if not district:
         return []
+    return [s for s in (_day_summary(district, d) for d in range(0, days)) if s]
 
-    all_slots = get_all_district_slots(district)
-    if not all_slots:
+def fetch_recent_days(location: str) -> list[dict]:
+    district = district_from_location(location or "")
+    if not district:
         return []
+    return [s for s in (_day_summary(district, d) for d in [-1, -2]) if s]
 
-    # Build a slot->record map
-    slot_map = {r["slot"]: r for r in all_slots}
+def get_slot_record(district: str, slot: int) -> dict | None:
+    return _get_slot(normalize_district(district), day=0, slot=slot)
 
-    slot = current_slot()
-    result = []
-    for i in range(1, days + 1):
-        next_slot = (slot + i) % 8
-        rec = slot_map.get(next_slot)
-        if rec:
-            result.append(_format_forecast_slot(rec))
+def get_all_district_slots(district: str) -> list[dict]:
+    return _get_day_slots(normalize_district(district), day=0)
 
-    return result
+def current_slot() -> int:
+    return _current_slot()

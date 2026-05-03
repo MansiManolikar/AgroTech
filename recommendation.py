@@ -15,27 +15,43 @@ def get_crop_stage(planting_date, growth_duration: int) -> dict:
     progress_pct = min(100, round((days_elapsed / growth_duration) * 100, 1))
 
     stage_pct = progress_pct / 100
-    if stage_pct < 0.15:
-        stage = {"name": "Germination",        "index": 1,
+    if stage_pct < 0.25:
+        stage = {"name": "Seedling",           "index": 1,
                  "water_multiplier": 0.6,
                  "description": "Seedling establishment phase"}
-    elif stage_pct < 0.45:
-        stage = {"name": "Vegetative Growth",  "index": 2,
+    elif stage_pct < 0.50:
+        stage = {"name": "Vegetative",         "index": 2,
                  "water_multiplier": 1.0,
                  "description": "Rapid leaf and stem development"}
-    elif stage_pct < 0.80:
-        stage = {"name": "Flowering/Fruiting", "index": 3,
+    elif stage_pct < 0.75:
+        stage = {"name": "Flowering",          "index": 3,
                  "water_multiplier": 1.3,
-                 "description": "Critical water demand — fruit set"}
+                 "description": "Critical water demand during flowering"}
     else:
-        stage = {"name": "Maturity/Harvest",   "index": 4,
+        stage = {"name": "Harvest",            "index": 4,
                  "water_multiplier": 0.5,
                  "description": "Reduce water; prepare for harvest"}
+
+    priority_map = {
+        1: "Medium",
+        2: "High",
+        3: "Very High",
+        4: "Low",
+    }
+    recommendation_map = {
+        1: "Keep soil evenly moist while roots establish.",
+        2: "Maintain regular irrigation and monitor moisture every 1-2 days.",
+        3: "Prioritize timely irrigation; moisture stress can reduce yield.",
+        4: "Reduce irrigation and prepare harvest checks.",
+    }
 
     stage.update({
         "days_elapsed":    days_elapsed,
         "days_remaining":  days_remaining,
         "progress_pct":    progress_pct,
+        "irrigation_priority": priority_map.get(stage["index"], "Monitor"),
+        "recommendation": recommendation_map.get(stage["index"], "Monitor crop condition."),
+        "irrigation_window": "Early morning or evening",
     })
     return stage
 
@@ -133,7 +149,6 @@ def generate_recommendation(farm: dict, crop: dict, soil_reading: dict,
                         "message": f"🌾 Crop at {stage['progress_pct']}% maturity — prepare harvest equipment."})
 
     # 6. Primary Recommendation Logic
-
     # PRIORITY 1: Harvest
     if stage["index"] == 4:
         if stage["progress_pct"] >= 95:
@@ -324,12 +339,14 @@ def generate_recommendation(farm: dict, crop: dict, soil_reading: dict,
             next_steps.append("🚫 Stop fertilizing — crop in maturity stage; excess nutrients reduce harvest quality")
 
     # 7. Add forecast advisory to details
-    if forecast:
-        f0 = forecast[0]
+    tomorrow = next((f for f in forecast if f.get("day_offset") == 1), None)
+    if not tomorrow and len(forecast) > 1:
+        tomorrow = forecast[1]
+    if tomorrow:
         details.append(
-            f"📅 Tomorrow: {f0['condition']}, "
-            f"max {f0['max_temp']}°C, rain {f0['total_rain']} mm "
-            f"({f0['chance_of_rain']}% chance)."
+            f"📅 Tomorrow: {tomorrow['condition']}, "
+            f"max {tomorrow['max_temp']}°C, rain {tomorrow['total_rain']} mm "
+            f"({tomorrow['chance_of_rain']}% chance)."
         )
 
     # Fertilizer advice based on stage

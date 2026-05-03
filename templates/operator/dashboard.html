@@ -27,9 +27,11 @@
   </div>
   <div class="stat-card animate-fade-up">
     <div class="stat-icon">📋</div>
-    <div class="stat-value">{{ total_advisories }}</div>
-    <div class="stat-label">Published Advisories</div>
-    <span class="stat-badge up">Active</span>
+    <div class="stat-value">{{ pending_zone_approvals + pending_schedule_approvals }}</div>
+    <div class="stat-label">Pending Approvals</div>
+    <a href="{{ url_for('operator.approvals') }}" class="stat-badge {% if pending_zone_approvals + pending_schedule_approvals > 0 %}down{% else %}up{% endif %}">
+      Review Queue
+    </a>
   </div>
 </div>
 
@@ -112,7 +114,11 @@
             </span>
           </td>
           <td>
-            {% if f.soil_moisture is none %}
+            {% if f.zone_status != 'approved' %}
+              <span class="badge {% if f.zone_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+                Zone {{ (f.zone_status or 'pending')|title }}
+              </span>
+            {% elif f.soil_moisture is none %}
               <span class="badge badge-gray">No Data</span>
             {% elif f.soil_moisture < 30 %}
               <span class="badge badge-red">🚨 Critical</span>
@@ -140,8 +146,7 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0;">
   {% for log in recent_logs %}
   <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:flex-start;">
-    <div style="width:34px;height:34px;border-radius:50%;background:var(--green-faint);
-                display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">
+    <div style="width:34px;height:34px;border-radius:50%;background:var(--green-faint); display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">
       {% if 'login' in log.action %}🔑
       {% elif 'logout' in log.action %}🚪
       {% elif 'farm' in log.action %}🌾

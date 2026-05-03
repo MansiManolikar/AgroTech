@@ -35,9 +35,28 @@
 </div>
 {% endif %}
 
+{% if farm.zone_status != 'approved' %}
+<div class="card" style="margin-bottom:24px;border-left:4px solid {% if farm.zone_status == 'rejected' %}var(--red){% else %}var(--yellow){% endif %};">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div class="card-title" style="font-size:15px;">Agro Zone Approval</div>
+      <div class="card-subtitle">
+        {% if farm.zone_status == 'rejected' %}
+          Update your farm zone details and submit again.
+        {% else %}
+          Admin approval is pending. Advanced features are temporarily restricted.
+        {% endif %}
+      </div>
+    </div>
+    <span class="badge {% if farm.zone_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+      {{ (farm.zone_status or 'pending')|title }}
+    </span>
+  </div>
+</div>
+{% endif %}
+
 <!-- Soil modal -->
-<div id="soilModalDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
-     z-index:1000;align-items:center;justify-content:center;">
+<div id="soilModalDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5); z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:32px;width:360px;max-width:90vw;">
     <h3 style="margin:0 0 16px;">💧 Log Soil Moisture</h3>
     <form method="POST" action="{{ url_for('farmer.log_soil') }}">
@@ -45,13 +64,10 @@
       <input type="hidden" name="next" value="{{ url_for('farmer.dashboard', farm_id=farm.id) }}">
       <div class="form-group">
         <label>Soil Moisture (%)</label>
-        <input type="number" name="soil_moisture" class="form-control"
-               min="0" max="100" step="0.1" placeholder="e.g. 42.5" required autofocus
-               title="Enter soil moisture between 0% and 100%">
+        <input type="number" name="soil_moisture" class="form-control" min="0" max="100" step="0.1" placeholder="e.g. 42.5" required autofocus title="Enter soil moisture between 0% and 100%">
       </div>
       <div style="display:flex;gap:10px;">
-        <button type="button" onclick="document.getElementById('soilModalDash').style.display='none'"
-                class="btn btn-outline" style="flex:1;justify-content:center;">Cancel</button>
+        <button type="button" onclick="document.getElementById('soilModalDash').style.display='none'" class="btn btn-outline" style="flex:1;justify-content:center;">Cancel</button>
         <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Save</button>
       </div>
     </form>
@@ -60,10 +76,8 @@
 
 <!--RECOMMENDATION BANNER -->
 {% if rec %}
-<div style="background:{{ rec.color }}12;border:2px solid {{ rec.color }};border-radius:14px;
-            padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
-  <div style="width:52px;height:52px;border-radius:12px;background:{{ rec.color }};
-              display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+<div style="background:{{ rec.color }}12;border:2px solid {{ rec.color }};border-radius:14px; padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+  <div style="width:52px;height:52px;border-radius:12px;background:{{ rec.color }}; display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
     {{ rec.icon }}
   </div>
   <div style="flex:1;min-width:180px;">
@@ -72,23 +86,22 @@
     <div style="font-size:13px;color:#555;">{{ rec.reason }}</div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <button onclick="document.getElementById('soilModalDash').style.display='flex'"
-            class="btn btn-outline" style="font-size:13px;">💧 Log Moisture</button>
+    <button onclick="document.getElementById('soilModalDash').style.display='flex'" class="btn btn-outline" style="font-size:13px;">💧 Log Moisture</button>
+    {% if farm.zone_status == 'approved' %}
     <a href="{{ url_for('farmer.recommendation', farm_id=farm.id) }}" class="btn btn-primary" style="font-size:13px;">
       🤖 Full Analysis →
     </a>
+    {% endif %}
   </div>
 </div>
 {% else %}
-<div style="background:#f5f5f5;border:1px dashed #ccc;border-radius:14px;padding:18px 24px;
-            margin-bottom:24px;display:flex;align-items:center;gap:16px;">
+<div style="background:#f5f5f5;border:1px dashed #ccc;border-radius:14px;padding:18px 24px; margin-bottom:24px;display:flex;align-items:center;gap:16px;">
   <span style="font-size:30px;">💧</span>
   <div style="flex:1;">
     <div style="font-weight:600;">Log your soil moisture to get smart recommendations</div>
     <div style="font-size:13px;color:#888;">Takes 10 seconds — drives irrigation, harvest & disease advice.</div>
   </div>
-  <button onclick="document.getElementById('soilModalDash').style.display='flex'"
-          class="btn btn-primary" style="font-size:13px;">Log Now</button>
+  <button onclick="document.getElementById('soilModalDash').style.display='flex'" class="btn btn-primary" style="font-size:13px;">Log Now</button>
 </div>
 {% endif %}
 <div class="stat-grid">
@@ -123,20 +136,24 @@
 </div>
 
 <!-- CROP STAGE PROGRESS BAR -->
-{% if rec and rec.stage %}
+{% set stage = rec.stage if rec and rec.stage else crop_calendar %}
+{% if stage %}
 <div class="card" style="margin-bottom:24px;padding:18px 24px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
     <div>
-      <span style="font-size:14px;font-weight:700;color:#2e7d32;">🌱 Crop Stage: {{ rec.stage.name }}</span>
-      <span style="font-size:12px;color:#888;margin-left:12px;">{{ rec.stage.days_elapsed }} days elapsed · {{ rec.stage.days_remaining }} days to harvest</span>
+      <span style="font-size:14px;font-weight:700;color:#2e7d32;">🌱 Crop Stage: {{ stage.name }}</span>
+      <span style="font-size:12px;color:#888;margin-left:12px;">{{ stage.days_elapsed }} days elapsed · {{ stage.days_remaining }} days to harvest</span>
     </div>
-    <span style="font-size:13px;font-weight:700;color:#2e7d32;">{{ rec.stage.progress_pct }}%</span>
+    <span style="font-size:13px;font-weight:700;color:#2e7d32;">{{ stage.progress_pct }}%</span>
   </div>
   <div style="background:#e8f5e9;border-radius:99px;height:10px;">
-    <div style="background:linear-gradient(90deg,#2e7d32,#66bb6a);width:{{ rec.stage.progress_pct }}%;height:10px;border-radius:99px;transition:width 1s;"></div>
+    <div style="background:linear-gradient(90deg,#2e7d32,#66bb6a);width:{{ stage.progress_pct }}%;height:10px;border-radius:99px;transition:width 1s;"></div>
   </div>
   <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:4px;">
-    <span>Germination</span><span>Vegetative</span><span>Flowering</span><span>Harvest</span>
+    <span>Seedling</span><span>Vegetative</span><span>Flowering</span><span>Harvest</span>
+  </div>
+  <div style="margin-top:16px;background:var(--green-faint);border:1px solid var(--green-pale);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--green-dark);">
+    Water need is <strong>{{ stage.irrigation_priority|lower }}</strong>. Irrigate in the <strong>morning or evening</strong> and check soil moisture regularly.
   </div>
 </div>
 {% endif %}
@@ -149,8 +166,7 @@
         <div class="card-title">💧 Soil Moisture Trend</div>
         <div class="card-subtitle">Your logged readings over time</div>
       </div>
-      <button onclick="document.getElementById('soilModalDash').style.display='flex'"
-              class="btn btn-sm btn-outline">+ Log</button>
+      <button onclick="document.getElementById('soilModalDash').style.display='flex'" class="btn btn-sm btn-outline">+ Log</button>
     </div>
     <div class="chart-container" style="height:220px;">
       <canvas id="moistureChart"></canvas>
@@ -178,14 +194,14 @@
     </div>
     <div style="margin-top:20px;">
       <div style="font-size:12px;opacity:0.6;margin-bottom:10px;font-weight:600;letter-spacing:1px;">RECENT DAYS</div>
-      {% for w in weather_history[:4] %}
+      {% for w in recent_days %}
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
-        <span style="font-size:13px;opacity:0.8;">{{ w.fetched_at.strftime('%b %d') if w.fetched_at else '—' }}</span>
+        <span style="font-size:13px;opacity:0.8;">{{ w.date }}</span>
         <span style="font-size:13px;">{{ w.condition or '—' }}</span>
-        <span style="font-weight:600;">{{ '%.0f'|format(w.temp) if w.temp else '--' }}°C</span>
+        <span style="font-weight:600;">{{ '%.0f'|format(w.max_temp) }}°C</span>
       </div>
       {% else %}
-      <div style="font-size:13px;opacity:0.5;padding:8px 0;">No weather history yet</div>
+      <div style="font-size:13px;opacity:0.5;padding:8px 0;">No recent data</div>
       {% endfor %}
     </div>
   </div>
@@ -205,7 +221,7 @@
           <div class="schedule-dot" style="background:{% if s.status == 'done' %}var(--green-light){% elif s.status == 'progressing' %}var(--yellow){% else %}var(--text-light){% endif %};"></div>
           <div>
             <div style="font-size:14px;font-weight:600;">{{ s.scheduled_date }}</div>
-            <div style="font-size:12px;color:var(--text-light);">{{ s.scheduled_time.strftime('%I:%M %p') if s.scheduled_time else '—' }} · {{ s.duration_minutes }} min · {{ s.water_amount }}L</div>
+            <div style="font-size:12px;color:var(--text-light);">{{ s.scheduled_time if s.scheduled_time else '—' }} · {{ s.duration_minutes }} min · {{ s.water_amount }}L</div>
           </div>
         </div>
         <span class="badge {% if s.status == 'done' %}badge-green{% elif s.status == 'progressing' %}badge-yellow{% else %}badge-gray{% endif %}">

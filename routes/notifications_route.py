@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
-from notifications import (get_notifications, get_unread_count,
-                           delete_notification, delete_all_notifications)
+from notifications import (get_notifications, get_unread_count, delete_notification, delete_all_notifications)
 
 notif_bp = Blueprint('notif', __name__)
 

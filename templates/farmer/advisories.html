@@ -36,9 +36,7 @@
  <div class="advisory-card" data-type="{{ adv.advisory_type }}">
    <div class="advisory-card-header">
      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-       <span class="advisory-tag" style="
-         background:{% if adv.advisory_type == 'irrigation' %}var(--blue-pale){% elif adv.advisory_type == 'pest' %}var(--orange-pale){% elif adv.advisory_type == 'disease' %}var(--red-pale){% elif adv.advisory_type == 'soil' %}var(--yellow-pale){% else %}var(--green-faint){% endif %};
-         color:{% if adv.advisory_type == 'irrigation' %}var(--blue){% elif adv.advisory_type == 'pest' %}var(--orange){% elif adv.advisory_type == 'disease' %}var(--red){% elif adv.advisory_type == 'soil' %}#6D4C00{% else %}var(--green-primary){% endif %};">
+       <span class="advisory-tag" style="background:{% if adv.advisory_type == 'irrigation' %}var(--blue-pale){% elif adv.advisory_type == 'pest' %}var(--orange-pale){% elif adv.advisory_type == 'disease' %}var(--red-pale){% elif adv.advisory_type == 'soil' %}var(--yellow-pale){% else %}var(--green-faint){% endif %}; color:{% if adv.advisory_type == 'irrigation' %}var(--blue){% elif adv.advisory_type == 'pest' %}var(--orange){% elif adv.advisory_type == 'disease' %}var(--red){% elif adv.advisory_type == 'soil' %}#6D4C00{% else %}var(--green-primary){% endif %};">
          {% if adv.advisory_type == 'irrigation' %}💧{% elif adv.advisory_type == 'pest' %}🐛{% elif adv.advisory_type == 'disease' %}🦠{% elif adv.advisory_type == 'soil' %}🪨{% else %}🌱{% endif %}
          {{ adv.advisory_type|title }}
        </span>

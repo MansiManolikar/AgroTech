@@ -16,11 +16,7 @@
      <input type="hidden" name="action" value="update_user">
      <div class="form-group">
        <label>Full Name *</label>
-       <input type="text" name="name" class="form-control"
-              value="{{ user.name }}" required
-              minlength="3" maxlength="100"
-              pattern="[A-Za-z\s]+"
-              title="Name must contain only letters and spaces (min 3 characters)">
+       <input type="text" name="name" class="form-control" value="{{ user.name }}" required minlength="3" maxlength="100" pattern="[A-Za-z\s]+" title="Name must contain only letters and spaces (min 3 characters)">
        <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Letters and spaces only, min 3 characters</div>
      </div>
      <div class="form-group">
@@ -29,13 +25,7 @@
      </div>
      <div class="form-group">
        <label>Phone Number</label>
-       <input type="tel" name="phone" class="form-control"
-              value="{{ user.phone or '' }}"
-              placeholder="e.g. 9876543210"
-              pattern="[6-9][0-9]{9}"
-              maxlength="10"
-              inputmode="numeric"
-              title="Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9">
+       <input type="tel" name="phone" class="form-control" value="{{ user.phone or '' }}" placeholder="e.g. 9876543210" pattern="[6-9][0-9]{9}" maxlength="10" inputmode="numeric" title="Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9">
        <div style="font-size:12px;color:var(--text-light);margin-top:4px;">10 digits, must start with 6–9 (optional)</div>
      </div>
      <div class="form-group">
@@ -83,19 +73,25 @@
      <div style="display:flex;gap:12px;flex-wrap:wrap;">
        <div class="meta-chip">🪨 {{ active_farm.soil_type or 'N/A' }}</div>
        <div class="meta-chip">📅 Planted: {{ active_farm.planting_date or 'N/A' }}</div>
+       <span class="badge {% if active_farm.zone_status == 'approved' %}badge-green{% elif active_farm.zone_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+         Zone {{ (active_farm.zone_status or 'pending')|title }}
+       </span>
      </div>
    </div>
    {% endif %}
 
    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-     <button class="btn btn-primary" onclick="openModal('farmModal')" style="flex:1;justify-content:center;">
-       {% if farm %}✏️ Edit Selected Farm{% else %}➕ Create Farm{% endif %}
-     </button>
-     <a href="{{ url_for('farmer.profile') }}{% if active_farm %}?farm_id={{ active_farm.id }}&new_farm=1{% endif %}"
-        class="btn btn-outline" style="flex:1;justify-content:center;">➕ New Farm</a>
-     {% if active_farm %}
-     <a href="{{ url_for('farmer.dashboard', farm_id=active_farm.id) }}" class="btn btn-outline" style="flex:1;justify-content:center;">📊 Dashboard</a>
-     {% endif %}
+      {% if farms|length == 0 %}
+        <button class="btn btn-primary" onclick="openModal('farmModal')" style="flex:1;justify-content:center;">
+          {% if farm %}✏️ Edit Selected Farm{% else %}➕ Create Farm{% endif %}
+        </button>
+      {% else %}
+        <a href="{{ url_for('farmer.profile') }}{% if active_farm %}?farm_id={{ active_farm.id }}&new_farm=1{% endif %}"
+          class="btn btn-outline" style="flex:1;justify-content:center;">➕ New Farm</a>    
+      {% endif %}    
+      {% if active_farm %}
+      <a href="{{ url_for('farmer.dashboard', farm_id=active_farm.id) }}" class="btn btn-outline" style="flex:1;justify-content:center;">📊 Dashboard</a>
+      {% endif %}
    </div>
 
    <div class="card" style="margin-bottom:20px;">
@@ -117,6 +113,9 @@
              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                <span class="meta-chip">🗺️ {{ farm_option.zone_name or 'No zone' }}</span>
                <span class="meta-chip">💧 {{ farm_option.irrigation_type or 'No irrigation type' }}</span>
+               <span class="badge {% if farm_option.zone_status == 'approved' %}badge-green{% elif farm_option.zone_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+                 Zone {{ (farm_option.zone_status or 'pending')|title }}
+               </span>
              </div>
            </div>
            <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -166,30 +165,56 @@
      <div class="form-row">
        <div class="form-group">
          <label>Farm Name *</label>
-         <input type="text" name="farm_name" class="form-control"
-                value="{{ farm.name if farm else '' }}" required
-                minlength="2" maxlength="150"
-                title="Farm name must be at least 2 characters">
+         <input type="text" name="farm_name" class="form-control" value="{{ farm.name if farm else '' }}" required minlength="2" maxlength="150" title="Farm name must be at least 2 characters">
        </div>
        <div class="form-group">
-         <label>Location *</label>
-         <input type="text" name="location" class="form-control"
-                value="{{ farm.location if farm else '' }}"
-                placeholder="Village, District, State" required
-                minlength="3" maxlength="255"
-                title="Location is required for weather data — enter village, district or city">
-         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Used for weather lookup — include one of the supported districts when possible</div>
+         <label>Location (District) *</label>
+         <select name="location" class="form-control" required id="locationSelect">
+           <option value="">-- Select your district --</option>
+           <!-- <optgroup label="🌾 Rice — Humid / Coastal"> -->
+             <option value="Kuttanad, Kerala"         {% if farm and 'Kuttanad'         in farm.location %}selected{% endif %}>Kuttanad (Kerala)</option>
+             <option value="Thanjavur, Tamil Nadu"    {% if farm and 'Thanjavur'        in farm.location %}selected{% endif %}>Thanjavur (Tamil Nadu)</option>
+             <option value="Udupi, Karnataka"         {% if farm and 'Udupi'            in farm.location %}selected{% endif %}>Udupi (Karnataka)</option>
+             <option value="Nagapattinam, Tamil Nadu" {% if farm and 'Nagapattinam'     in farm.location %}selected{% endif %}>Nagapattinam (Tamil Nadu)</option>
+             <option value="Dakshina Kannada, Karnataka" {% if farm and 'Dakshina Kannada' in farm.location %}selected{% endif %}>Dakshina Kannada (Karnataka)</option>
+           <!-- </optgroup> -->
+           <!-- <optgroup label="🌿 Sugarcane — Tropical / Irrigated"> -->
+             <option value="Kolhapur, Maharashtra"   {% if farm and 'Kolhapur'  in farm.location %}selected{% endif %}>Kolhapur (Maharashtra)</option>
+             <option value="Mandya, Karnataka"       {% if farm and 'Mandya'    in farm.location %}selected{% endif %}>Mandya (Karnataka)</option>
+             <option value="Satara, Maharashtra"     {% if farm and 'Satara'    in farm.location %}selected{% endif %}>Satara (Maharashtra)</option>
+             <option value="Belagavi, Karnataka"     {% if farm and 'Belagavi'  in farm.location %}selected{% endif %}>Belagavi (Karnataka)</option>
+             <option value="Coimbatore, Tamil Nadu"  {% if farm and 'Coimbatore' in farm.location %}selected{% endif %}>Coimbatore (Tamil Nadu)</option>
+           <!-- </optgroup> -->
+           <!-- <optgroup label="🫘 Soybean — Semi-Arid / Central India"> -->
+             <option value="Indore, Madhya Pradesh"  {% if farm and 'Indore'   in farm.location %}selected{% endif %}>Indore (Madhya Pradesh)</option>
+             <option value="Nagpur, Maharashtra"     {% if farm and 'Nagpur'   in farm.location %}selected{% endif %}>Nagpur (Maharashtra)</option>
+             <option value="Dharwad, Karnataka"      {% if farm and 'Dharwad'  in farm.location %}selected{% endif %}>Dharwad (Karnataka)</option>
+             <option value="Ujjain, Madhya Pradesh"  {% if farm and 'Ujjain'   in farm.location %}selected{% endif %}>Ujjain (Madhya Pradesh)</option>
+             <option value="Akola, Maharashtra"      {% if farm and 'Akola'    in farm.location %}selected{% endif %}>Akola (Maharashtra)</option>
+           <!-- </optgroup> -->
+         </select>
+         <div class="field-error" id="err_location"></div>
        </div>
      </div>
      <div class="form-row">
        <div class="form-group">
          <label>Area (acres)</label>
-         <input type="number" name="area" class="form-control"
-                step="0.1" min="0.1" max="100000"
-                value="{{ farm.area if farm else '' }}"
-                title="Enter a positive area value in acres">
+         <input type="number" name="area" class="form-control" step="0.1" min="0.1" max="100000" value="{{ farm.area if farm else '' }}" title="Enter a positive area value in acres">
        </div>
        <div class="form-group">
+         <label>Crop *</label>
+         <select name="crop_id" class="form-control" id="cropSelect" onchange="autoCropSuggest(this)">
+           <option value="">Select crop first</option>
+           {% for c in crops %}
+           <option value="{{ c.id }}" data-moisture="{{ c.moisture_threshold }}" data-duration="{{ c.growth_duration or 0 }}" data-name="{{ c.name|lower }}" {% if farm and farm.crop_id == c.id %}selected{% endif %}>
+             {{ c.name }}{% if c.variety %} ({{ c.variety }}){% endif %}
+           </option>
+           {% endfor %}
+         </select>
+       </div>
+     </div>
+     <div class="form-row">
+        <div class="form-group">
          <label>Soil Type</label>
          <select name="soil_type" class="form-control">
            <option value="">Select soil type</option>
@@ -198,38 +223,16 @@
            {% endfor %}
          </select>
        </div>
-     </div>
-     <div class="form-row">
-       <div class="form-group">
-         <label>Crop *</label>
-         <select name="crop_id" class="form-control" id="cropSelect" onchange="autoCropSuggest(this)">
-           <option value="">Select crop first</option>
-           {% for c in crops %}
-           <option value="{{ c.id }}"
-                   data-moisture="{{ c.moisture_threshold }}"
-                   data-name="{{ c.name|lower }}"
-                   {% if farm and farm.crop_id == c.id %}selected{% endif %}>
-             {{ c.name }}{% if c.variety %} ({{ c.variety }}){% endif %}
-           </option>
-           {% endfor %}
-         </select>
-         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Choose crop first — soil type & zone will be auto-suggested</div>
-       </div>
        <div class="form-group">
          <label>Agro Zone</label>
          <select name="zone_id" class="form-control" id="zoneSelect">
            <option value="">Select zone</option>
            {% for z in zones %}
-           <option value="{{ z.id }}"
-                   data-climate="{{ z.climate|lower }}"
-                   data-soil="{{ z.soil_type|lower }}"
-                   data-name="{{ z.name|lower }}"
-                   {% if farm and farm.zone_id == z.id %}selected{% endif %}>
+           <option value="{{ z.id }}" data-climate="{{ z.climate|lower }}" data-soil="{{ z.soil_type|lower }}" data-name="{{ z.name|lower }}" {% if farm and farm.zone_id == z.id %}selected{% endif %}>
              {{ z.name }} ({{ z.climate }})
            </option>
            {% endfor %}
          </select>
-         <div id="zoneHint" style="font-size:12px;color:#2e7d32;margin-top:4px;display:none;"></div>
        </div>
      </div>
      <div class="form-row">
@@ -244,10 +247,7 @@
        </div>
        <div class="form-group">
          <label>Planting Date</label>
-         <input type="date" name="planting_date" class="form-control"
-                value="{{ farm.planting_date if farm else '' }}"
-                max="{{ today_date }}"
-                title="Planting date cannot be in the future">
+         <input type="date" name="planting_date" class="form-control" value="{{ farm.planting_date if farm else '' }}" max="{{ today_date }}" title="Planting date cannot be in the future">
        </div>
      </div>
      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
@@ -312,9 +312,10 @@ if (farmFormAction) {
   farmFormAction.closest('form').addEventListener('submit', function(e) {
     let ok = true;
     const farmNameEl = this.querySelector('input[name="farm_name"]');
-    const locationEl = this.querySelector('input[name="location"]');
+    const locationEl = this.querySelector('[name="location"]');
     const areaEl = this.querySelector('input[name="area"]');
     const plantDateEl = this.querySelector('input[name="planting_date"]');
+    const cropEl = this.querySelector('select[name="crop_id"]');
 
     const fn = farmNameEl.value.trim();
     if (!fn || fn.length < 2) {
@@ -323,7 +324,7 @@ if (farmFormAction) {
 
     const loc = locationEl.value.trim();
     if (!loc) {
-      fieldErr(locationEl, 'Location is required for weather data.'); ok = false;
+      fieldErr(locationEl, 'Please select your district.'); ok = false;
     } else fieldErr(locationEl, '');
 
     if (areaEl && areaEl.value) {
@@ -336,12 +337,16 @@ if (farmFormAction) {
     if (plantDateEl && plantDateEl.value) {
       const d = new Date(plantDateEl.value);
       const now = new Date();
-      const twoYearsAgo = new Date(); twoYearsAgo.setFullYear(now.getFullYear() - 2);
-      const oneYearAhead = new Date(); oneYearAhead.setFullYear(now.getFullYear() + 1);
-      if (d < twoYearsAgo) {
-        fieldErr(plantDateEl, 'Planting date seems too old (more than 2 years ago).'); ok = false;
-      } else if (d > oneYearAhead) {
-        fieldErr(plantDateEl, 'Planting date cannot be more than 1 year in the future.'); ok = false;
+      now.setHours(0,0,0,0);
+      if (d > now) {
+        fieldErr(plantDateEl, 'Planting date cannot be in the future.'); ok = false;
+      } else if (cropEl && cropEl.value) {
+        const selected = cropEl.options[cropEl.selectedIndex];
+        const duration = parseInt(selected.dataset.duration || '0');
+        const daysSince = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+        if (duration && daysSince > duration) {
+          fieldErr(plantDateEl, `Planting date is outside the ${duration}-day growth duration for this crop.`); ok = false;
+        } else fieldErr(plantDateEl, '');
       } else fieldErr(plantDateEl, '');
     }
 
@@ -358,19 +363,19 @@ document.querySelectorAll('input[name="phone"]').forEach(el => {
 const CROP_ZONE_KEYWORDS = {
   'sugarcane': ['tropical','alluvial','monsoon'],
   'rice':      ['deltaic','humid','lowland','flood','clay'],
-  'soybean':   ['semi-arid','black','vertisol','rainfed'],
-  'wheat':     ['alluvial','subtropical','loam'],
-  'cotton':    ['black','semi-arid','vertisol'],
-  'maize':     ['tropical','loam','alluvial'],
+  'soybean':   ['semi-arid','black','vertisol','rainfed']
 };
 
 const CROP_SOIL_MAP = {
   'sugarcane': 'Alluvial',
   'rice':      'Clay Loam',
-  'soybean':   'Black Cotton',
-  'wheat':     'Alluvial',
-  'cotton':    'Black Cotton',
-  'maize':     'Sandy Loam',
+  'soybean':   'Black Cotton'
+};
+
+const CROP_IRRIGATION_MAP = {
+  'sugarcane': 'Furrow',
+  'rice':      'Flood',
+  'soybean':   'Sprinkler'
 };
 
 function autoCropSuggest(sel) {
@@ -378,6 +383,7 @@ function autoCropSuggest(sel) {
   const cropName = (opt.dataset.name || '').toLowerCase();
   const moisture = opt.dataset.moisture;
   const soilSel = document.querySelector('select[name="soil_type"]');
+  const irrigationSel = document.querySelector('select[name="irrigation_type"]');
 
   if (soilSel) {
     for (const [key, soil] of Object.entries(CROP_SOIL_MAP)) {
@@ -385,6 +391,20 @@ function autoCropSuggest(sel) {
         for (let i = 0; i < soilSel.options.length; i++) {
           if (soilSel.options[i].value.toLowerCase().includes(soil.toLowerCase().split(' ')[0])) {
             soilSel.selectedIndex = i;
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  if (irrigationSel) {
+    for (const [key, irrigation] of Object.entries(CROP_IRRIGATION_MAP)) {
+      if (cropName.includes(key)) {
+        for (let i = 0; i < irrigationSel.options.length; i++) {
+          if (irrigationSel.options[i].value.toLowerCase() === irrigation.toLocaleLowerCase()) {
+            irrigationSel.selectedIndex = i;
             break;
           }
         }

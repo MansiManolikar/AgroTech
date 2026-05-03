@@ -18,13 +18,21 @@
    </div>
    <div style="display:flex;gap:8px;flex-wrap:wrap;">
      {% for farm_option in farms %}
-     <a href="{{ url_for('farmer.schedule', farm_id=farm_option.id) }}"
-        class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+     <a href="{{ url_for('farmer.schedule', farm_id=farm_option.id) }}" class="btn {% if active_farm_id == farm_option.id %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
        {{ farm_option.name }}
      </a>
      {% endfor %}
    </div>
  </div>
+</div>
+{% endif %}
+
+{% if farm.zone_status != 'approved' %}
+<div class="card" style="margin-bottom:24px;border-left:4px solid {% if farm.zone_status == 'rejected' %}var(--red){% else %}var(--yellow){% endif %};">
+  <div class="card-title" style="font-size:15px;">Zone approval required</div>
+  <div class="card-subtitle">
+    Your farm zone assignment is {{ (farm.zone_status or 'pending')|title }}. Irrigation scheduling is enabled after admin approval.
+  </div>
 </div>
 {% endif %}
 
@@ -35,8 +43,7 @@
    <div class="stat-label">Current Moisture</div>
    <div style="margin-top:10px;">
      <div class="progress-bar">
-       <div class="progress-fill {% if soil_reading and soil_reading.soil_moisture < 30 %}danger{% elif soil_reading and soil_reading.soil_moisture < 50 %}warning{% endif %}"
-            style="width:{{ soil_reading.soil_moisture if soil_reading else 0 }}%;"></div>
+       <div class="progress-fill {% if soil_reading and soil_reading.soil_moisture < 30 %}danger{% elif soil_reading and soil_reading.soil_moisture < 50 %}warning{% endif %}" style="width:{{ soil_reading.soil_moisture if soil_reading else 0 }}%;"></div>
      </div>
    </div>
  </div>
@@ -107,7 +114,7 @@
      <div class="card-title">📋 Irrigation Schedules</div>
      <div class="card-subtitle">{{ farm.name }}</div>
    </div>
-   <button class="btn btn-primary" onclick="openModal('scheduleModal')">➕ Add Schedule</button>
+   <button class="btn btn-primary" onclick="openModal('scheduleModal')" {% if farm.zone_status != 'approved' %}disabled style="opacity:0.55;cursor:not-allowed;"{% endif %}>➕ Add Schedule</button>
  </div>
 
  {% if schedules %}
@@ -120,6 +127,7 @@
          <th>Duration</th>
          <th>Water Amount</th>
          <th>Reason</th>
+         <th>Approval</th>
          <th>Status</th>
        </tr>
      </thead>
@@ -127,10 +135,15 @@
        {% for s in schedules %}
        <tr>
          <td style="font-weight:600;">{{ s.scheduled_date }}</td>
-         <td>{{ s.scheduled_time.strftime('%I:%M %p') if s.scheduled_time else '—' }}</td>
+         <td>{{ s.scheduled_time if s.scheduled_time else '—' }}</td>
          <td>{{ s.duration_minutes }} minutes</td>
          <td>{{ s.water_amount }} L</td>
          <td style="font-size:13px;color:var(--text-light);">{{ s.reason or '—' }}</td>
+         <td>
+           <span class="badge {% if s.approval_status == 'approved' %}badge-green{% elif s.approval_status == 'rejected' %}badge-red{% else %}badge-yellow{% endif %}">
+             {{ (s.approval_status or 'pending')|title }}
+           </span>
+         </td>
          <td>
            <span class="badge {% if s.status == 'done' %}badge-green{% elif s.status == 'progressing' %}badge-yellow{% else %}badge-gray{% endif %}">
              {% if s.status == 'done' %}✓ {% elif s.status == 'progressing' %}⏳ {% endif %}{{ s.status|title }}
@@ -160,36 +173,27 @@
      <input type="hidden" name="farm_id" value="{{ farm.id }}">
      <div class="form-group">
        <label>Scheduled Date *</label>
-       <input type="date" name="scheduled_date" class="form-control" required
-              title="Select a future date for irrigation">
+       <input type="date" name="scheduled_date" class="form-control" required title="Select a future date for irrigation">
      </div>
      <div class="form-group">
        <label>Scheduled Time *</label>
-       <input type="time" name="scheduled_time" class="form-control" required
-              title="Select the irrigation start time">
+       <input type="time" name="scheduled_time" class="form-control" required title="Select the irrigation start time">
      </div>
      <div class="form-row">
        <div class="form-group">
          <label>Duration (minutes) *</label>
-         <input type="number" name="duration_minutes" class="form-control"
-                value="45" min="10" max="480" required
-                title="Duration must be between 10 and 480 minutes">
+         <input type="number" name="duration_minutes" class="form-control" value="45" min="10" max="480" required title="Duration must be between 10 and 480 minutes">
          <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Between 10 – 480 minutes</div>
        </div>
        <div class="form-group">
-         <label>Water Amount (Litres) *</label>
-         <input type="number" name="water_amount" class="form-control"
-                value="400" step="50" min="50" max="100000" required
-                title="Water amount must be between 50 and 100,000 litres">
-         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Min 50 L — Max 1,00,000 L</div>
+         <label>Water Amount (mm/day) *</label>
+         <input type="number" name="water_amount" class="form-control" value="200" step="50" min="50" max="100000" required title="Water amount must be between 100 and 2500 mm/day ">
+         <div style="font-size:12px;color:var(--text-light);margin-top:4px;">Min 10 mm — Max 2500 mm per day </div>
        </div>
      </div>
      <div class="form-group">
        <label>Reason / Notes</label>
-       <input type="text" name="reason" class="form-control"
-              placeholder="e.g., Low moisture detected"
-              maxlength="255"
-              title="Optional — brief note about why irrigation is scheduled">
+       <input type="text" name="reason" class="form-control" placeholder="e.g., Low moisture detected" maxlength="255" title="Optional — brief note about why irrigation is scheduled">
      </div>
      <div style="display:flex;gap:12px;justify-content:flex-end;">
        <button type="button" class="btn btn-outline" onclick="closeModal('scheduleModal')">Cancel</button>

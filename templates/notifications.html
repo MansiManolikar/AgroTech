@@ -8,8 +8,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
   <div style="font-size:14px;color:var(--text-light);">
     {% if unread_count > 0 %}
-      <span style="background:#ffebee;color:#c62828;font-weight:700;padding:4px 12px;
-                   border-radius:99px;font-size:13px;">{{ unread_count }} unread</span>
+      <span style="background:#ffebee;color:#c62828;font-weight:700;padding:4px 12px; border-radius:99px;font-size:13px;">{{ unread_count }} unread</span>
     {% else %}
       <span style="color:#2e7d32;font-weight:600;">✅ All caught up!</span>
     {% endif %}
@@ -52,17 +51,9 @@
 {% set color = type_colors.get(n.type, ('#f5f5f5','#bbb'))[1] %}
 {% set icon  = type_icons.get(n.type, 'ℹ️') %}
 
-<div style="background:{% if n.is_read %}#fff{% else %}{{ bg }}{% endif %};
-            border:1px solid {% if n.is_read %}#f0f0f0{% else %}{{ color }}30{% endif %};
-            border-left:4px solid {% if n.is_read %}#e0e0e0{% else %}{{ color }}{% endif %};
-            border-radius:12px;padding:16px 20px;
-            display:flex;align-items:flex-start;gap:16px;
-            transition:all 0.2s;">
-
+<div style="background:{% if n.is_read %}#fff{% else %}{{ bg }}{% endif %}; border:1px solid {% if n.is_read %}#f0f0f0{% else %}{{ color }}30{% endif %}; border-left:4px solid {% if n.is_read %}#e0e0e0{% else %}{{ color }}{% endif %}; border-radius:12px;padding:16px 20px; display:flex;align-items:flex-start;gap:16px; transition:all 0.2s;">
   <!-- Icon -->
-  <div style="width:42px;height:42px;border-radius:10px;flex-shrink:0;
-              background:{% if n.is_read %}#f5f5f5{% else %}{{ color }}15{% endif %};
-              display:flex;align-items:center;justify-content:center;font-size:20px;">
+  <div style="width:42px;height:42px;border-radius:10px;flex-shrink:0; background:{% if n.is_read %}#f5f5f5{% else %}{{ color }}15{% endif %}; display:flex;align-items:center;justify-content:center;font-size:20px;">
     {{ icon }}
   </div>
 
@@ -73,8 +64,7 @@
         {{ n.title }}
       </span>
       {% if not n.is_read %}
-      <span style="background:{{ color }};color:#fff;font-size:10px;font-weight:700;
-                   padding:2px 8px;border-radius:99px;letter-spacing:0.5px;">NEW</span>
+      <span style="background:{{ color }};color:#fff;font-size:10px;font-weight:700; padding:2px 8px;border-radius:99px;letter-spacing:0.5px;">NEW</span>
       {% endif %}
       <span style="font-size:11px;color:#bbb;margin-left:auto;">
         {{ n.created_at.strftime('%d %b %Y, %I:%M %p') if n.created_at else '—' }}
@@ -91,18 +81,13 @@
   <!-- Actions -->
   <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
     <form method="POST" action="/notifications/mark-read/{{ n.id }}">
-      <button type="submit" title="Mark as done and remove"
-              style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;
-                     padding:5px 10px;font-size:12px;color:#2e7d32;cursor:pointer;
-                     font-weight:600;white-space:nowrap;">
-        ✓ Done
+      <button type="submit" title="Mark as done and remove" style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px; padding:5px 10px;font-size:12px;color:#2e7d32;cursor:pointer; font-weight:600;white-space:nowrap;">
+        ✓ Read
       </button>
     </form>
     <form method="POST" action="/notifications/delete/{{ n.id }}">
       <button type="submit" title="Delete without reading"
-              style="background:#fce4ec;border:1px solid #f48fb1;border-radius:8px;
-                     padding:5px 10px;font-size:12px;color:#c62828;cursor:pointer;
-                     font-weight:600;">
+              style="background:#fce4ec;border:1px solid #f48fb1;border-radius:8px; padding:5px 10px;font-size:12px;color:#c62828;cursor:pointer; font-weight:600;">
         🗑
       </button>
     </form>
