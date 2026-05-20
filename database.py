@@ -4,7 +4,7 @@ import hashlib
 DB_CONFIG = {
    'host': 'localhost',
    'user': 'root',
-   'password': 'root',
+   'password': '',
    'database': 'agritech'
 }
 
